@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  master:
+    build: ./master
+    ports:
+      - "4001:4001"
+    volumes:
+      - watchdog_data:/app/data
+    environment:
+      - DB_PATH=/app/data/watchdog.db
+      - ALERT_WEBHOOK=${ALERT_WEBHOOK:-}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker-1:
+    build: ./worker
+    depends_on:
+      master:
+        condition: service_healthy
+    environment:
+      - MASTER_URL=ws://master:4001/ws
+      - WORKER_LOCATION=local-1
+    restart: unless-stopped
+
+  worker-2:
+    build: ./worker
+    depends_on:
+      master:
+        condition: service_healthy
+    environment:
+      - MASTER_URL=ws://master:4001/ws
+      - WORKER_LOCATION=local-2
+    restart: unless-stopped
+
+volumes:
+  watchdog_data:
