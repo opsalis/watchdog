@@ -1,185 +1,92 @@
-# Watchdog
+# Watchdog — Decentralized Uptime Monitoring
 
-Decentralized uptime monitoring. One master server, workers anywhere.
+Monitor your websites, APIs, and services from 4 continents simultaneously. Know before your users do.
 
-```
-website → master (port 4001) ← workers (WebSocket)
-                ↓
-           SQLite DB
-                ↓
-         alert webhook
-```
+## Features
 
-## Quick start
+- **Multi-continent checks** — Canada, Singapore, Frankfurt, UK
+- **Regional outage detection** — Down in Asia but up in Europe? We catch it.
+- **Multiple check types** — HTTP, HTTPS, TCP, DNS, SSL certificate
+- **Smart alerting** — Webhook, email, Telegram with consensus-based triggers
+- **Public status pages** — Share a live dashboard with your users
+- **Sub-minute intervals** — Check as often as every 30 seconds
+
+## Quick Start
+
+### Docker Compose (Development)
 
 ```bash
-git clone https://github.com/opsalis/watchdog.git
-cd watchdog
 docker compose up -d
 ```
 
-Master is available at `http://localhost:4001`.
+### API Usage
+
+```bash
+# Create a monitor
+curl -X POST http://localhost:3300/v1/monitors \
+  -H 'Content-Type: application/json' \
+  -H 'X-API-Key: your-key' \
+  -d '{
+    "url": "https://example.com",
+    "type": "http",
+    "interval_seconds": 60,
+    "alert_channels": ["webhook"],
+    "webhook_url": "https://your-webhook.com/alert"
+  }'
+
+# List monitors
+curl http://localhost:3300/v1/monitors \
+  -H 'X-API-Key: your-key'
+
+# Get check results
+curl http://localhost:3300/v1/monitors/{id}/checks \
+  -H 'X-API-Key: your-key'
+
+# Health check
+curl http://localhost:3300/health
+```
 
 ## Architecture
 
-| Component | Description |
-|-----------|-------------|
-| `master/server.js` | Express + SQLite + WebSocketServer. Stores jobs, dispatches checks, aggregates results, sends alerts. |
-| `worker/worker.js` | Connects to master via WebSocket. Performs HTTP/HTTPS checks. Reports latency, status, SSL info. |
-
-### Data flow
-
-1. Client calls `POST /v1/jobs` on the master.
-2. Master stores the job in SQLite.
-3. Every 5 seconds the dispatch loop runs — any job whose `interval_s` has elapsed gets a `check` message sent to an available worker.
-4. Worker performs the HTTP request and sends back a `result` message.
-5. Master stores the result. If the site changed state (up→down or down→up) an alert webhook is fired.
-
-### Worker connection
-
-Workers connect via WebSocket to `ws://master:4001/ws` with header `x-worker-location: <location>`.
-
-On connect, the master sends the current job list. Workers send a `ping` every 30 seconds; master replies with `pong`.
-
-Workers auto-reconnect after disconnect.
-
-## API reference
-
-### POST /v1/jobs
-
-Create a monitoring job.
-
-```json
-{
-  "url": "https://example.com",
-  "interval_seconds": 60,
-  "locations": ["any"],
-  "alert_email": "ops@example.com",
-  "method": "GET",
-  "expect_status": 200,
-  "timeout_ms": 10000
-}
+```
+API Server (Deployment)          Checker Nodes (DaemonSet)
+┌──────────────────┐     ┌──────────┐ ┌──────────┐ ┌──────────┐
+│ Express + SQLite  │◄───│ Canada   │ │ Frankfurt│ │Singapore │
+│ REST API :3300    │    │  Checker │ │  Checker │ │  Checker │
+│ Alert Engine      │    └──────────┘ └──────────┘ └──────────┘
+└──────────────────┘
 ```
 
-`locations` is a list of worker location names. Use `["any"]` to use any available worker.
+## Deployment
 
-Returns the created job object.
+### k3s (Production)
 
-### GET /v1/jobs
-
-List all active jobs.
-
-### GET /v1/jobs/:id
-
-Get job with 24-hour uptime stats and 10 most recent checks.
-
-```json
-{
-  "id": "...",
-  "url": "https://example.com",
-  "stats": {
-    "uptime_pct": "99.72",
-    "avg_latency": 87,
-    "min_latency": 31,
-    "max_latency": 412,
-    "total_checks_24h": 1440
-  },
-  "recent_checks": [...]
-}
+```bash
+kubectl apply -f backend/k8s/service.yaml
+kubectl apply -f backend/k8s/deployment.yaml
+kubectl apply -f backend/k8s/daemonset.yaml
 ```
 
-### DELETE /v1/jobs/:id
-
-Stop monitoring a job.
-
-### GET /v1/jobs/:id/checks?limit=100
-
-Get check history. Max 1000 records.
-
-### GET /health
-
-Server health including connected worker count.
-
-### GET /v1/workers
-
-List connected workers with location and last-seen time.
-
-## Configuration
-
-### Master environment variables
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `PORT` | `4001` | HTTP/WS listen port |
-| `DB_PATH` | `./watchdog.db` | SQLite database path |
-| `ALERT_WEBHOOK` | — | HTTP POST URL for up/down alerts |
+| `PORT` | `3300` | API listen port |
+| `DB_PATH` | `./data/watchdog.db` | SQLite database path |
+| `NODE_LOCATION` | `unknown` | Geographic location label |
+| `API_URL` | `http://watchdog-api:3300` | Central API (for checkers) |
+| `API_KEY` | — | Authentication key |
+| `RESEND_API_KEY` | — | Email alerts |
+| `TELEGRAM_BOT_TOKEN` | — | Telegram alerts |
 
-### Worker environment variables
+## Pricing
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `MASTER_URL` | `ws://localhost:4001/ws` | Master WebSocket URL |
-| `WORKER_LOCATION` | `unknown` | Location label shown in results |
-| `RECONNECT_MS` | `5000` | Reconnect delay after disconnect |
+| Tier | Monitors | Interval | Locations | Price |
+|------|----------|----------|-----------|-------|
+| Free | 5 | 5 min | 2 | $0 |
+| Pro | 50 | 1 min | All 4 | $10/mo USDC |
+| Business | 500 | 30 sec | All 4 | $50/mo USDC |
 
-## Adding a remote worker
+## License
 
-Deploy the worker container on any server:
-
-```bash
-docker run -d \
-  -e MASTER_URL=ws://YOUR_MASTER_IP:4001/ws \
-  -e WORKER_LOCATION=eu-frankfurt \
-  --restart unless-stopped \
-  watchdog-worker
-```
-
-The master must be reachable from the worker. If the master is behind a firewall, open port 4001.
-
-## Alert payload
-
-When a monitored URL changes state, the master POSTs this JSON to `ALERT_WEBHOOK`:
-
-```json
-{
-  "job_id": "abc-123",
-  "url": "https://example.com",
-  "state": "DOWN",
-  "latency_ms": 10000,
-  "location": "eu-frankfurt",
-  "timestamp": 1711800000000,
-  "alert_email": "ops@example.com"
-}
-```
-
-`state` is either `"UP"` or `"DOWN"`. The alert fires only on state transitions.
-
-## Building
-
-```bash
-# Build images
-docker compose build
-
-# Run with custom alert webhook
-ALERT_WEBHOOK=https://hooks.slack.com/... docker compose up -d
-
-# Scale workers
-docker compose up -d --scale worker-1=3
-```
-
-## File structure
-
-```
-watchdog/
-  master/
-    server.js       — master server (~200 lines)
-    Dockerfile
-  worker/
-    worker.js       — worker (~80 lines)
-    Dockerfile
-  website/
-    index.html      — landing page
-  docker-compose.yml
-  CLAUDE.md
-  README.md
-```
+Proprietary — Mesa Operations LLC

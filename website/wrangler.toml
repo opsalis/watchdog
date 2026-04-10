@@ -1,0 +1,11 @@
+name = "watchdog-website"
+compatibility_date = "2024-12-01"
+main = "index.html"
+
+[site]
+bucket = "."
+
+[env.production]
+routes = [
+  { pattern = "watchdog.example.com", custom_domain = true }
+]

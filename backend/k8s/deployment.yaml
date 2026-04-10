@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: watchdog-api
+  namespace: watchdog
+  labels:
+    app: watchdog
+    component: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: watchdog
+      component: api
+  template:
+    metadata:
+      labels:
+        app: watchdog
+        component: api
+    spec:
+      containers:
+      - name: api
+        image: opsalis/watchdog-api:latest
+        ports:
+        - containerPort: 3300
+          name: http
+        env:
+        - name: PORT
+          value: "3300"
+        - name: DB_PATH
+          value: "/app/data/watchdog.db"
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: watchdog-secrets
+              key: api-key
+              optional: true
+        - name: RESEND_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: watchdog-secrets
+              key: resend-api-key
+              optional: true
+        - name: TELEGRAM_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: watchdog-secrets
+              key: telegram-bot-token
+              optional: true
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3300
+          initialDelaySeconds: 5
+          periodSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3300
+          initialDelaySeconds: 3
+          periodSeconds: 10
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: watchdog-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: watchdog-data
+  namespace: watchdog
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

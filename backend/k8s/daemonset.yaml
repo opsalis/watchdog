@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: watchdog-checker
+  namespace: watchdog
+  labels:
+    app: watchdog
+    component: checker
+spec:
+  selector:
+    matchLabels:
+      app: watchdog
+      component: checker
+  template:
+    metadata:
+      labels:
+        app: watchdog
+        component: checker
+    spec:
+      containers:
+      - name: checker
+        image: opsalis/watchdog-checker:latest
+        command: ["node", "dist/checker.js"]
+        env:
+        - name: NODE_LOCATION
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: API_URL
+          value: "http://watchdog-api:3300"
+        - name: POLL_INTERVAL
+          value: "15000"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        livenessProbe:
+          exec:
+            command: ["node", "-e", "process.exit(0)"]
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      terminationGracePeriodSeconds: 10

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Status Dashboard — Watchdog</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #ffffff; --fg: #111827; --muted: #6b7280; --accent: #2563eb; --border: #e5e7eb; --card-bg: #f9fafb; --green: #10b981; --red: #ef4444; --yellow: #f59e0b; --radius: 12px; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--fg); background: var(--bg); line-height: 1.6; }
+    a { color: var(--accent); text-decoration: none; }
+    .container { max-width: 900px; margin: 0 auto; padding: 2rem; }
+    h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+    .subtitle { color: var(--muted); margin-bottom: 2rem; }
+    .overall-status { padding: 1.5rem; border-radius: var(--radius); margin-bottom: 2rem; text-align: center; font-size: 1.2rem; font-weight: 600; }
+    .overall-status.up { background: #d1fae5; color: #065f46; }
+    .overall-status.down { background: #fee2e2; color: #991b1b; }
+    .overall-status.partial { background: #fef3c7; color: #92400e; }
+    .monitor-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1rem; }
+    .monitor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; }
+    .monitor-name { font-weight: 600; font-size: 1.05rem; }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
+    .status-badge.up { background: #d1fae5; color: #065f46; }
+    .status-badge.down { background: #fee2e2; color: #991b1b; }
+    .status-badge.unknown { background: #f3f4f6; color: #6b7280; }
+    .uptime-bar { display: flex; gap: 2px; margin-bottom: 0.5rem; }
+    .uptime-bar .bar { flex: 1; height: 32px; border-radius: 3px; }
+    .uptime-bar .bar.up { background: var(--green); }
+    .uptime-bar .bar.down { background: var(--red); }
+    .uptime-bar .bar.unknown { background: #e5e7eb; }
+    .monitor-meta { display: flex; gap: 2rem; color: var(--muted); font-size: 0.85rem; }
+    .locations-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem; }
+    .loc-chip { display: flex; align-items: center; gap: 0.3rem; padding: 0.2rem 0.6rem; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; font-size: 0.8rem; }
+    .loc-chip .dot { width: 8px; height: 8px; border-radius: 50%; }
+    .loc-chip .dot.up { background: var(--green); }
+    .loc-chip .dot.down { background: var(--red); }
+    footer { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+    .empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+    .refresh-note { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Status Dashboard</h1>
+  <p class="subtitle">Real-time monitoring from 4 continents</p>
+  <p class="refresh-note">Auto-refreshes every 30 seconds</p>
+
+  <div id="overall-status" class="overall-status up">
+    All Systems Operational
+  </div>
+
+  <div id="monitors-list">
+    <div class="empty-state">
+      <p>Loading monitors...</p>
+      <p style="margin-top:1rem; font-size: 0.9rem;">Configure the API URL below to connect to your Watchdog instance.</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p>Powered by <a href="index.html">Watchdog</a> — Uptime monitoring from 4 continents</p>
+</footer>
+
+<script>
+  const API_BASE = localStorage.getItem('watchdog_api') || '';
+  const MONITOR_ID = new URLSearchParams(window.location.search).get('id');
+
+  async function fetchStatus() {
+    if (!API_BASE) return;
+    try {
+      let url = MONITOR_ID
+        ? `${API_BASE}/v1/status/${MONITOR_ID}`
+        : `${API_BASE}/v1/monitors`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      if (MONITOR_ID) {
+        renderSingleMonitor(data);
+      } else {
+        renderMonitors(data.monitors || []);
+      }
+    } catch (err) {
+      console.error('Failed to fetch status:', err);
+    }
+  }
+
+  function renderMonitors(monitors) {
+    const container = document.getElementById('monitors-list');
+    const overall = document.getElementById('overall-status');
+
+    if (monitors.length === 0) {
+      container.innerHTML = '<div class="empty-state"><p>No monitors configured yet.</p></div>';
+      return;
+    }
+
+    const downCount = monitors.filter(m => m.status === 'down').length;
+    if (downCount === 0) {
+      overall.className = 'overall-status up';
+      overall.textContent = 'All Systems Operational';
+    } else if (downCount < monitors.length) {
+      overall.className = 'overall-status partial';
+      overall.textContent = `${downCount} System${downCount > 1 ? 's' : ''} Experiencing Issues`;
+    } else {
+      overall.className = 'overall-status down';
+      overall.textContent = 'Major Outage Detected';
+    }
+
+    container.innerHTML = monitors.map(m => `
+      <div class="monitor-card">
+        <div class="monitor-header">
+          <span class="monitor-name">${m.name || m.url}</span>
+          <span class="status-badge ${m.status || 'unknown'}">${(m.status || 'unknown').toUpperCase()}</span>
+        </div>
+        <div class="monitor-meta">
+          <span>Type: ${m.type}</span>
+          <span>Interval: ${m.interval_seconds}s</span>
+          <span>Last check: ${m.last_checked_at || 'Never'}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderSingleMonitor(data) {
+    const container = document.getElementById('monitors-list');
+    const overall = document.getElementById('overall-status');
+    document.querySelector('h1').textContent = data.name || 'Status';
+
+    overall.className = `overall-status ${data.status || 'unknown'}`;
+    overall.textContent = data.status === 'up' ? 'Operational' : data.status === 'down' ? 'Outage Detected' : 'Unknown';
+
+    const locations = {};
+    (data.recent_checks || []).forEach(c => {
+      if (!locations[c.location]) locations[c.location] = c;
+    });
+
+    container.innerHTML = `
+      <div class="monitor-card">
+        <div class="monitor-header">
+          <span class="monitor-name">${data.url}</span>
+          <span class="status-badge ${data.status || 'unknown'}">${(data.status || 'unknown').toUpperCase()}</span>
+        </div>
+        <div class="locations-row">
+          ${Object.entries(locations).map(([loc, c]) => `
+            <div class="loc-chip">
+              <div class="dot ${c.up ? 'up' : 'down'}"></div>
+              ${loc} — ${c.latency_ms ? c.latency_ms + 'ms' : 'N/A'}
+            </div>
+          `).join('')}
+        </div>
+        <p style="margin-top:1rem; color:var(--muted); font-size:0.85rem;">Last checked: ${data.last_checked_at || 'Never'}</p>
+      </div>
+      ${(data.recent_incidents || []).length > 0 ? `
+        <h3 style="margin: 1.5rem 0 1rem;">Recent Incidents</h3>
+        ${data.recent_incidents.map(i => `
+          <div class="monitor-card" style="border-left: 4px solid ${i.to_status === 'down' ? 'var(--red)' : 'var(--green)'}">
+            <strong>${i.type === 'outage' ? 'Outage' : 'Recovery'}</strong> — ${i.started_at}
+          </div>
+        `).join('')}
+      ` : ''}
+    `;
+  }
+
+  fetchStatus();
+  setInterval(fetchStatus, 30000);
+</script>
+
+</body>
+</html>
