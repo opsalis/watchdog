@@ -3,8 +3,39 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Watchdog — Uptime Monitoring from 4 Continents</title>
+  <title>PingDog — Uptime Monitoring from 4 Continents</title>
   <meta name="description" content="Is your site really up? Monitor from Canada, Singapore, Frankfurt, and the UK simultaneously. Detect regional outages before your users do." />
+  <meta name="keywords" content="uptime monitoring, website monitoring, server monitoring, multi-location monitoring, regional outage detection, status page, ping monitor, HTTP monitoring, SSL monitoring">
+  <link rel="canonical" href="https://pingdog.net/">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F415;</text></svg>">
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://pingdog.net/">
+  <meta property="og:title" content="PingDog — Uptime Monitoring from 4 Continents">
+  <meta property="og:description" content="Monitor from Canada, Singapore, Frankfurt, and the UK simultaneously. Detect regional outages before your users do.">
+  <meta property="og:image" content="https://pingdog.net/og-image.png">
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="PingDog — Uptime Monitoring from 4 Continents">
+  <meta name="twitter:description" content="Monitor from Canada, Singapore, Frankfurt, and the UK simultaneously. Detect regional outages before your users do.">
+  <meta name="twitter:image" content="https://pingdog.net/og-image.png">
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "PingDog",
+    "description": "Uptime monitoring from 4 continents. HTTP, HTTPS, TCP, DNS, and SSL monitoring with multi-location consensus and public status pages.",
+    "url": "https://pingdog.net",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "offers": [
+      { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD", "description": "5 monitors, 5-minute interval, 2 locations" },
+      { "@type": "Offer", "name": "Pro", "price": "10", "priceCurrency": "USD", "description": "50 monitors, 1-minute interval, all 4 locations" },
+      { "@type": "Offer", "name": "Business", "price": "50", "priceCurrency": "USD", "description": "500 monitors, 30-second interval, API access" }
+    ]
+  }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -103,7 +134,7 @@
 <body>
 
 <nav>
-  <div class="logo">Watchdog</div>
+  <div class="logo">PingDog</div>
   <div class="links">
     <a href="#features">Features</a>
     <a href="#pricing">Pricing</a>
@@ -130,7 +161,7 @@
 </div>
 
 <section class="features" id="features">
-  <h2>Why Watchdog?</h2>
+  <h2>Why PingDog?</h2>
   <div class="features-grid">
     <div class="feature-card">
       <h3>4 Continents, Simultaneously</h3>
@@ -268,7 +299,7 @@ curl -X POST https://api.watchdog.example.com/v1/monitors \
     <thead>
       <tr>
         <th>Feature</th>
-        <th>Watchdog</th>
+        <th>PingDog</th>
         <th>Pingdom</th>
         <th>UptimeRobot</th>
         <th>Better Uptime</th>
@@ -322,8 +353,18 @@ curl -X POST https://api.watchdog.example.com/v1/monitors \
 </section>
 
 <footer>
-  <p><a href="terms.html">Terms of Service</a> &middot; <a href="mailto:support@watchdog.example.com">Contact</a></p>
+  <p><a href="terms.html">Terms of Service</a> &middot; <a href="mailto:support@pingdog.net">Contact</a></p>
   <p style="margin-top:0.5rem">Uptime monitoring from 4 continents.</p>
+  <div style="margin-top:1rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;font-size:0.8rem;">
+    <span style="color:var(--muted)">Also from us:</span>
+    <a href="https://sertone.net" style="color:var(--muted)">Sertone</a>
+    <a href="https://l2aas.net" style="color:var(--muted)">L2aaS</a>
+    <a href="https://chainrpc.net" style="color:var(--muted)">ChainRPC</a>
+    <a href="https://chainclone.net" style="color:var(--muted)">ChainClone</a>
+    <a href="https://theloadtester.com" style="color:var(--muted)">LoadTester</a>
+    <a href="https://swarmbrowser.net" style="color:var(--muted)">SwarmBrowser</a>
+  </div>
+  <p style="margin-top:0.5rem">&copy; 2026 PingDog</p>
 </footer>
 
 </body>

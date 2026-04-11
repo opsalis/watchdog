@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://pingdog.net/sitemap.xml
