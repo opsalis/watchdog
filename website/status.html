@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Status Page — PingDog</title>
+  <meta name="description" content="Live uptime status for services monitored by PingDog.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f59e0b'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='8' stroke='%23fff' stroke-width='2' fill='none' opacity='.6'/%3E%3Ccircle cx='16' cy='16' r='12' stroke='%23fff' stroke-width='1.5' fill='none' opacity='.3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --amber: #f59e0b;
+      --amber-dim: #d97706;
+      --amber-light: #fffbeb;
+      --text: #1a1a2e;
+      --text-secondary: #555770;
+      --bg: #ffffff;
+      --bg-alt: #f7f8fc;
+      --border: #e4e7ec;
+      --green: #10b981;
+      --red: #ef4444;
+      --radius: 10px;
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    a { color: var(--amber-dim); text-decoration: none; }
+    .container { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+    nav { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 16px 0; }
+    nav .inner { max-width: 760px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.2rem; color: var(--text); text-decoration: none; }
+    .logo svg { width: 28px; height: 28px; }
+
+    .status-header { margin: 48px 0 32px; }
+    .status-header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.5px; margin-bottom: 8px; }
+    .status-header .meta { color: var(--text-secondary); font-size: 0.9rem; }
+
+    .overall-status { border-radius: 12px; padding: 20px 24px; margin-bottom: 32px; display: flex; align-items: center; gap: 16px; }
+    .overall-status.all-good { background: #f0fdf4; border: 1px solid #bbf7d0; }
+    .overall-status.has-issues { background: #fef2f2; border: 1px solid #fecaca; }
+    .overall-status.no-data { background: var(--bg-alt); border: 1px solid var(--border); }
+    .overall-icon { font-size: 1.75rem; }
+    .overall-title { font-size: 1.15rem; font-weight: 700; }
+    .overall-desc { font-size: 0.875rem; color: var(--text-secondary); margin-top: 2px; }
+
+    .monitor-row { border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; margin-bottom: 12px; display: flex; align-items: center; gap: 16px; background: var(--bg); transition: box-shadow 0.15s; }
+    .monitor-row:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .monitor-info { flex: 1; min-width: 0; }
+    .monitor-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .monitor-type { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+    .monitor-stats { display: flex; gap: 24px; align-items: center; flex-shrink: 0; }
+    .stat-block { text-align: right; }
+    .stat-block .val { font-weight: 700; font-size: 0.95rem; }
+    .stat-block .lbl { font-size: 0.75rem; color: var(--text-secondary); }
+    .uptime-bar { display: flex; gap: 2px; align-items: center; height: 20px; }
+    .uptime-seg { width: 4px; height: 16px; border-radius: 2px; flex-shrink: 0; }
+    .seg-up { background: var(--green); }
+    .seg-down { background: var(--red); }
+    .seg-none { background: #e5e7eb; }
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; }
+    .pill-up { background: #f0fdf4; color: #166534; }
+    .pill-down { background: #fef2f2; color: #991b1b; }
+    .pill-unknown { background: #f8fafc; color: #94a3b8; }
+    .pill-dot { width: 7px; height: 7px; border-radius: 50%; }
+    .pd-green { background: var(--green); }
+    .pd-red { background: var(--red); }
+    .pd-grey { background: #94a3b8; }
+
+    .section-label { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin: 32px 0 12px; }
+
+    .incident-row { background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius); padding: 14px 18px; margin-bottom: 8px; }
+    .incident-name { font-weight: 600; font-size: 0.9rem; color: #991b1b; margin-bottom: 4px; }
+    .incident-meta { font-size: 0.8rem; color: #b91c1c; }
+
+    #loading { text-align: center; padding: 60px 0; }
+    .spinner { display: inline-block; width: 32px; height: 32px; border: 3px solid rgba(245,158,11,0.3); border-top-color: var(--amber); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #not-found { display: none; text-align: center; padding: 80px 0; }
+
+    .powered-by { text-align: center; margin: 48px 0 24px; font-size: 0.8rem; color: #94a3b8; }
+    .powered-by a { color: #94a3b8; }
+    .powered-by a:hover { color: var(--amber); }
+
+    footer { border-top: 1px solid var(--border); padding: 24px 0; text-align: center; font-size: 0.8rem; color: #94a3b8; }
+
+    @media (max-width: 600px) {
+      .monitor-stats { gap: 12px; }
+      .uptime-bar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="inner">
+      <a href="/" class="logo">
+        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#f59e0b"/>
+          <circle cx="16" cy="16" r="4" fill="#fff"/>
+          <circle cx="16" cy="16" r="8" stroke="#fff" stroke-width="2" fill="none" opacity=".65"/>
+          <circle cx="16" cy="16" r="12" stroke="#fff" stroke-width="1.5" fill="none" opacity=".3"/>
+        </svg>
+        Ping<span style="color:var(--amber)">Dog</span>
+      </a>
+      <a href="/account.html" style="font-size:0.9rem;color:var(--text-secondary);">My account</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <div id="loading">
+      <div class="spinner"></div>
+      <div style="color:var(--text-secondary);font-size:0.9rem;margin-top:16px;">Loading status page...</div>
+    </div>
+
+    <div id="not-found">
+      <div style="font-size:3rem;margin-bottom:16px;">🐾</div>
+      <h2 style="font-weight:700;margin-bottom:8px;">Status page not found</h2>
+      <p style="color:var(--text-secondary);">This link may be invalid or the key has no public monitors.<br>
+        <a href="/">Get your own monitoring key &rarr;</a></p>
+    </div>
+
+    <div id="page-content" style="display:none;">
+      <div class="status-header">
+        <h1 id="page-title">Service Status</h1>
+        <div class="meta" id="page-meta">Powered by PingDog</div>
+      </div>
+
+      <div id="overall-status-box" class="overall-status no-data">
+        <div class="overall-icon" id="overall-icon">⏳</div>
+        <div>
+          <div class="overall-title" id="overall-title">Loading...</div>
+          <div class="overall-desc" id="overall-desc">Checking all services</div>
+        </div>
+      </div>
+
+      <div class="section-label">Services</div>
+      <div id="monitors-list"></div>
+
+      <div id="incidents-section" style="display:none;">
+        <div class="section-label">Active incidents</div>
+        <div id="incidents-list"></div>
+      </div>
+
+      <div class="powered-by">
+        Monitoring by <a href="/">PingDog</a> &nbsp;&middot;&nbsp; Updated <span id="last-update">—</span>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <a href="/" style="color:#94a3b8;">PingDog</a> &middot; <a href="/account.html" style="color:#94a3b8;">Get your own status page</a>
+  </footer>
+
+  <script>
+  var API_URL = 'https://api.pingdog.net';
+
+  function getKeyHash() {
+    var params = new URLSearchParams(window.location.search);
+    return params.get('k') || '';
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
+  }
+
+  function fmtDuration(startIso, endIso) {
+    var end = endIso ? new Date(endIso) : new Date();
+    var mins = Math.floor((end - new Date(startIso)) / 60000);
+    if (mins < 60) return mins + 'm';
+    return Math.floor(mins/60) + 'h ' + (mins%60) + 'm';
+  }
+
+  function renderUptimeBar(segments) {
+    // segments: array of booleans, newest last
+    var out = '';
+    for (var i = 0; i < 45; i++) {
+      var cls = i >= segments.length ? 'seg-none' : (segments[i] ? 'seg-up' : 'seg-down');
+      out += '<div class="uptime-seg ' + cls + '" title="' + (i >= segments.length ? 'No data' : (segments[i] ? 'Up' : 'Down')) + '"></div>';
+    }
+    return out;
+  }
+
+  async function loadStatusPage() {
+    var keyHash = getKeyHash();
+    if (!keyHash) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('not-found').style.display = 'block';
+      return;
+    }
+
+    try {
+      var res = await fetch(API_URL + '/api/status/' + keyHash);
+      if (!res.ok) throw new Error('Not found');
+      var data = await res.json();
+
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('page-content').style.display = 'block';
+
+      // Title
+      document.getElementById('page-title').textContent = data.title || 'Service Status';
+      document.title = (data.title || 'Service Status') + ' — PingDog';
+      document.getElementById('page-meta').textContent = 'Last checked: ' + fmtDate(data.checked_at || new Date().toISOString());
+      document.getElementById('last-update').textContent = fmtDate(data.checked_at || new Date().toISOString());
+
+      var monitors = data.monitors || [];
+
+      // Overall status
+      var allUp = monitors.every(function(m){ return m.status === 'up'; });
+      var anyDown = monitors.some(function(m){ return m.status === 'down'; });
+      var box = document.getElementById('overall-status-box');
+      if (monitors.length === 0) {
+        box.className = 'overall-status no-data';
+        document.getElementById('overall-icon').textContent = '⏳';
+        document.getElementById('overall-title').textContent = 'No public monitors';
+        document.getElementById('overall-desc').textContent = 'This account has no public monitors yet.';
+      } else if (allUp) {
+        box.className = 'overall-status all-good';
+        document.getElementById('overall-icon').textContent = '✅';
+        document.getElementById('overall-title').textContent = 'All systems operational';
+        document.getElementById('overall-desc').textContent = monitors.length + ' service' + (monitors.length !== 1 ? 's' : '') + ' monitored from ' + (data.regions || 2) + ' locations.';
+      } else if (anyDown) {
+        box.className = 'overall-status has-issues';
+        document.getElementById('overall-icon').textContent = '🔴';
+        document.getElementById('overall-title').textContent = 'Some services are down';
+        var downCount = monitors.filter(function(m){ return m.status === 'down'; }).length;
+        document.getElementById('overall-desc').textContent = downCount + ' of ' + monitors.length + ' services reporting issues.';
+      }
+
+      // Monitor rows
+      var list = document.getElementById('monitors-list');
+      if (monitors.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-secondary);padding:20px 0;">No public monitors configured.</p>';
+      } else {
+        list.innerHTML = monitors.map(function(m) {
+          var pillClass = m.status === 'up' ? 'pill-up' : (m.status === 'down' ? 'pill-down' : 'pill-unknown');
+          var dotClass = m.status === 'up' ? 'pd-green' : (m.status === 'down' ? 'pd-red' : 'pd-grey');
+          var upPct = m.uptime_24h != null ? m.uptime_24h.toFixed(2) + '%' : '—';
+          var segments = m.segments || [];
+          return '<div class="monitor-row">' +
+            '<div class="status-pill ' + pillClass + '">' +
+            '<div class="pill-dot ' + dotClass + '"></div>' +
+            (m.status || 'unknown') +
+            '</div>' +
+            '<div class="monitor-info">' +
+            '<div class="monitor-name">' + escapeHtml(m.name || m.url) + '</div>' +
+            '<div class="monitor-type">' + (m.type || 'http').toUpperCase() + '</div>' +
+            '</div>' +
+            '<div class="monitor-stats">' +
+            '<div class="uptime-bar">' + renderUptimeBar(segments) + '</div>' +
+            '<div class="stat-block"><div class="val">' + upPct + '</div><div class="lbl">24h uptime</div></div>' +
+            '<div class="stat-block"><div class="val">' + (m.latency_ms ? m.latency_ms + 'ms' : '—') + '</div><div class="lbl">Latency</div></div>' +
+            '</div>' +
+            '</div>';
+        }).join('');
+      }
+
+      // Incidents
+      var incidents = (data.incidents || []).filter(function(i){ return !i.resolved_at; });
+      if (incidents.length > 0) {
+        document.getElementById('incidents-section').style.display = 'block';
+        document.getElementById('incidents-list').innerHTML = incidents.map(function(i) {
+          return '<div class="incident-row">' +
+            '<div class="incident-name">&#x26A0;&#xFE0F; ' + escapeHtml(i.monitor_name) + ' — ongoing incident</div>' +
+            '<div class="incident-meta">Started ' + fmtDate(i.started_at) + ' &middot; Duration: ' + fmtDuration(i.started_at, null) + '</div>' +
+            '</div>';
+        }).join('');
+      }
+
+    } catch(e) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('not-found').style.display = 'block';
+    }
+  }
+
+  loadStatusPage();
+  // Auto-refresh every 60 seconds
+  setInterval(loadStatusPage, 60000);
+  </script>
+
+</body>
+</html>

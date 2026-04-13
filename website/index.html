@@ -1,371 +1,458 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PingDog — Uptime Monitoring from 4 Continents</title>
-  <meta name="description" content="Is your site really up? Monitor from Canada, Singapore, Frankfurt, and the UK simultaneously. Detect regional outages before your users do." />
-  <meta name="keywords" content="uptime monitoring, website monitoring, server monitoring, multi-location monitoring, regional outage detection, status page, ping monitor, HTTP monitoring, SSL monitoring">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PingDog — Monitor Your APIs, RPCs, and AI Agents from 4 Continents</title>
+  <meta name="description" content="The only uptime monitor that speaks blockchain and AI natively. HTTP, TCP, DNS, SSL, RPC health, A2A agents, and MCP servers. Consensus-based — no false positives.">
+  <meta name="keywords" content="uptime monitoring, RPC health check, A2A agent monitor, MCP server monitor, API monitoring, status page, blockchain monitoring, AI agent monitoring, website monitoring">
   <link rel="canonical" href="https://pingdog.net/">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F415;</text></svg>">
-  <!-- Open Graph -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f59e0b'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='8' stroke='%23fff' stroke-width='2' fill='none' opacity='.6'/%3E%3Ccircle cx='16' cy='16' r='12' stroke='%23fff' stroke-width='1.5' fill='none' opacity='.3'/%3E%3C/svg%3E">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#f59e0b">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://pingdog.net/">
-  <meta property="og:title" content="PingDog — Uptime Monitoring from 4 Continents">
-  <meta property="og:description" content="Monitor from Canada, Singapore, Frankfurt, and the UK simultaneously. Detect regional outages before your users do.">
-  <meta property="og:image" content="https://pingdog.net/og-image.png">
-  <!-- Twitter Card -->
+  <meta property="og:title" content="PingDog — Monitor Your APIs, RPCs, and AI Agents from 4 Continents">
+  <meta property="og:description" content="The only uptime monitor that speaks blockchain and AI natively. Consensus-based — no false positives.">
+  <meta property="og:site_name" content="PingDog">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="PingDog — Uptime Monitoring from 4 Continents">
-  <meta name="twitter:description" content="Monitor from Canada, Singapore, Frankfurt, and the UK simultaneously. Detect regional outages before your users do.">
-  <meta name="twitter:image" content="https://pingdog.net/og-image.png">
-  <!-- JSON-LD -->
+  <meta name="twitter:title" content="PingDog — Monitor Your APIs, RPCs, and AI Agents from 4 Continents">
+  <meta name="twitter:description" content="The only uptime monitor that speaks blockchain and AI natively.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     "name": "PingDog",
-    "description": "Uptime monitoring from 4 continents. HTTP, HTTPS, TCP, DNS, and SSL monitoring with multi-location consensus and public status pages.",
+    "description": "Uptime monitoring from 4 continents. HTTP, TCP, DNS, SSL, RPC, A2A, and MCP monitoring with consensus-based alerting.",
     "url": "https://pingdog.net",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Any",
     "offers": [
-      { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD", "description": "5 monitors, 5-minute interval, 2 locations" },
-      { "@type": "Offer", "name": "Pro", "price": "10", "priceCurrency": "USD", "description": "50 monitors, 1-minute interval, all 4 locations" },
-      { "@type": "Offer", "name": "Business", "price": "50", "priceCurrency": "USD", "description": "500 monitors, 30-second interval, API access" }
+      { "@type": "Offer", "name": "Free", "price": "0", "priceCurrency": "USD", "description": "3 monitors, 5-minute interval, 2 regions" },
+      { "@type": "Offer", "name": "Pro", "price": "9.73", "priceCurrency": "USD", "description": "50 monitors, 1-minute interval, all 4 regions" },
+      { "@type": "Offer", "name": "Business", "price": "47.21", "priceCurrency": "USD", "description": "500 monitors, 30-second interval, all 4 regions" }
     ]
   }
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --bg: #ffffff; --fg: #111827; --muted: #6b7280; --accent: #2563eb;
-      --accent-light: #dbeafe; --border: #e5e7eb; --card-bg: #f9fafb;
-      --green: #10b981; --red: #ef4444; --yellow: #f59e0b;
-      --radius: 12px; --max-w: 1100px;
+      --amber: #f59e0b;
+      --amber-dim: #d97706;
+      --amber-light: #fffbeb;
+      --amber-glow: rgba(245,158,11,0.07);
+      --text: #1a1a2e;
+      --text-secondary: #555770;
+      --bg: #ffffff;
+      --bg-alt: #f7f8fc;
+      --border: #e4e7ec;
+      --green: #10b981;
+      --red: #ef4444;
+      --radius: 10px;
     }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--fg); background: var(--bg); line-height: 1.6; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+    a { color: inherit; text-decoration: none; }
+    .container { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
 
-    /* Nav */
-    nav { display: flex; justify-content: space-between; align-items: center; max-width: var(--max-w); margin: 0 auto; padding: 1.5rem 2rem; }
-    nav .logo { font-size: 1.4rem; font-weight: 700; color: var(--fg); }
-    nav .links { display: flex; gap: 2rem; align-items: center; }
-    nav .links a { color: var(--muted); font-size: 0.95rem; }
-    .btn { display: inline-block; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; border: none; cursor: pointer; transition: all 0.2s; }
-    .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: #1d4ed8; text-decoration: none; }
-    .btn-outline { border: 2px solid var(--border); color: var(--fg); background: transparent; }
+    nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    nav .inner { display: flex; align-items: center; justify-content: space-between; padding: 16px 0; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.25rem; letter-spacing: -0.5px; }
+    .logo svg { width: 32px; height: 32px; flex-shrink: 0; }
+    .nav-links { display: flex; align-items: center; gap: 32px; font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); }
+    .nav-links a:hover { color: var(--text); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 10px 22px; border-radius: var(--radius); font-weight: 600; font-size: 0.9rem; transition: all 0.2s; cursor: pointer; border: none; }
+    .btn-primary { background: var(--amber); color: #fff; }
+    .btn-primary:hover { background: var(--amber-dim); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(245,158,11,0.3); }
+    .btn-outline { border: 1.5px solid var(--border); color: var(--text-secondary); background: transparent; }
+    .btn-outline:hover { border-color: var(--amber); color: var(--amber-dim); }
 
-    /* Hero */
-    .hero { text-align: center; padding: 5rem 2rem 4rem; max-width: 800px; margin: 0 auto; }
-    .hero h1 { font-size: 3rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; }
-    .hero h1 span { color: var(--accent); }
-    .hero p { font-size: 1.25rem; color: var(--muted); margin-bottom: 2rem; max-width: 600px; margin-left: auto; margin-right: auto; }
-    .hero-btns { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+    .hero { padding: 80px 0 24px; text-align: center; position: relative; overflow: hidden; }
+    .hero::before { content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%; background: radial-gradient(circle at 50% 40%, var(--amber-glow) 0%, transparent 60%); pointer-events: none; }
+    .hero h1 { font-size: clamp(2.4rem, 5.5vw, 3.8rem); font-weight: 800; letter-spacing: -1.5px; line-height: 1.1; margin-bottom: 20px; position: relative; color: var(--text); }
+    .hero h1 .accent { color: var(--amber); }
+    .hero p { font-size: 1.15rem; color: var(--text-secondary); max-width: 580px; margin: 0 auto 36px; }
 
-    /* Locations */
-    .locations { display: flex; justify-content: center; gap: 2rem; padding: 2rem; flex-wrap: wrap; }
-    .location { display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; color: var(--muted); }
-    .location .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--green); }
+    #keygen-box { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 14px; padding: 32px; max-width: 540px; margin: 36px auto 0; position: relative; }
+    #key-display { display: none; background: #1e293b; border-radius: 8px; padding: 16px 48px 16px 16px; margin-top: 16px; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; color: #fcd34d; word-break: break-all; text-align: center; position: relative; }
+    #key-warning { display: none; color: var(--amber-dim); font-size: 0.85rem; margin-top: 10px; font-weight: 500; text-align: center; }
+    #key-usage { display: none; margin-top: 16px; background: #1e293b; border-radius: 8px; padding: 16px; text-align: left; font-size: 0.75rem; color: #e2e8f0; overflow-x: auto; position: relative; }
 
-    /* Features */
-    .features { max-width: var(--max-w); margin: 0 auto; padding: 4rem 2rem; }
-    .features h2 { text-align: center; font-size: 2rem; margin-bottom: 3rem; }
-    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; }
-    .feature-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; }
-    .feature-card h3 { font-size: 1.15rem; margin-bottom: 0.75rem; }
-    .feature-card p { color: var(--muted); font-size: 0.95rem; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 28px 0 64px; }
+    .stat { background: var(--bg); padding: 24px; text-align: center; }
+    .stat-value { font-size: 1.75rem; font-weight: 700; color: var(--text); }
+    .stat-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 
-    /* How it works */
-    .how-it-works { max-width: var(--max-w); margin: 0 auto; padding: 4rem 2rem; }
-    .how-it-works h2 { text-align: center; font-size: 2rem; margin-bottom: 3rem; }
-    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; }
-    .step { text-align: center; padding: 1.5rem; }
-    .step-num { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: var(--accent-light); color: var(--accent); font-weight: 700; font-size: 1.2rem; margin-bottom: 1rem; }
-    .step h3 { font-size: 1.05rem; margin-bottom: 0.5rem; }
-    .step p { color: var(--muted); font-size: 0.9rem; }
+    .section { padding: 80px 0; }
+    .section-title { font-size: 2rem; font-weight: 700; margin-bottom: 12px; letter-spacing: -0.5px; color: var(--text); }
+    .section-sub { color: var(--text-secondary); margin-bottom: 48px; font-size: 1.05rem; max-width: 600px; }
 
-    /* Pricing */
-    .pricing { max-width: var(--max-w); margin: 0 auto; padding: 4rem 2rem; }
-    .pricing h2 { text-align: center; font-size: 2rem; margin-bottom: 0.5rem; }
-    .pricing .subtitle { text-align: center; color: var(--muted); margin-bottom: 3rem; }
-    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; }
-    .price-card { border: 2px solid var(--border); border-radius: var(--radius); padding: 2.5rem 2rem; text-align: center; transition: border-color 0.2s; }
-    .price-card.featured { border-color: var(--accent); position: relative; }
-    .price-card.featured::before { content: 'Most Popular'; position: absolute; top: -14px; left: 50%; transform: translateX(-50%); background: var(--accent); color: #fff; padding: 0.2rem 1rem; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }
-    .price-card h3 { font-size: 1.3rem; margin-bottom: 0.5rem; }
-    .price-card .price { font-size: 2.5rem; font-weight: 800; margin: 1rem 0 0.25rem; }
-    .price-card .price span { font-size: 1rem; font-weight: 400; color: var(--muted); }
-    .price-card .price-note { color: var(--muted); font-size: 0.85rem; margin-bottom: 1.5rem; }
-    .price-card ul { list-style: none; text-align: left; margin-bottom: 2rem; }
-    .price-card ul li { padding: 0.4rem 0; font-size: 0.95rem; color: var(--muted); }
-    .price-card ul li::before { content: '\2713'; color: var(--green); font-weight: 700; margin-right: 0.5rem; }
+    .checks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .check-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; transition: all 0.2s; position: relative; }
+    .check-card:hover { border-color: var(--amber); transform: translateY(-2px); box-shadow: 0 4px 16px rgba(245,158,11,0.1); }
+    .check-card.unique { border-color: var(--amber); background: var(--amber-light); }
+    .check-card.unique::after { content: 'ONLY PINGDOG'; position: absolute; top: 12px; right: 12px; background: var(--amber); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; letter-spacing: 0.5px; }
+    .check-icon { font-size: 1.5rem; margin-bottom: 12px; }
+    .check-name { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; color: var(--text); }
+    .check-desc { font-size: 0.85rem; color: var(--text-secondary); }
 
-    /* API Example */
-    .api-example { max-width: var(--max-w); margin: 0 auto; padding: 4rem 2rem; }
-    .api-example h2 { text-align: center; font-size: 2rem; margin-bottom: 2rem; }
-    .code-block { background: #1f2937; color: #e5e7eb; border-radius: var(--radius); padding: 2rem; overflow-x: auto; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.9rem; line-height: 1.7; }
-    .code-block .comment { color: #6b7280; }
-    .code-block .string { color: #34d399; }
-    .code-block .keyword { color: #818cf8; }
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+    .step { text-align: center; }
+    .step-num { width: 40px; height: 40px; border-radius: 50%; background: var(--amber); color: #fff; font-weight: 700; font-size: 1rem; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+    .step h3 { font-weight: 700; margin-bottom: 8px; }
+    .step p { font-size: 0.9rem; color: var(--text-secondary); }
 
-    /* Comparison */
-    .comparison { max-width: var(--max-w); margin: 0 auto; padding: 4rem 2rem; }
-    .comparison h2 { text-align: center; font-size: 2rem; margin-bottom: 2rem; }
-    .comparison table { width: 100%; border-collapse: collapse; }
-    .comparison th, .comparison td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.95rem; }
-    .comparison th { font-weight: 600; background: var(--card-bg); }
-    .comparison td:first-child { font-weight: 600; }
-    .highlight-row { background: var(--accent-light); }
+    .consensus-box { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 16px; padding: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+    .consensus-map { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .region-dot { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; display: flex; align-items: center; gap: 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: var(--green); }
+    .dot-amber { background: var(--amber); }
+    .region-name { font-weight: 600; font-size: 0.875rem; }
+    .region-ms { font-size: 0.75rem; color: var(--text-secondary); font-family: 'JetBrains Mono', monospace; }
 
-    /* Footer */
-    footer { border-top: 1px solid var(--border); padding: 2rem; text-align: center; color: var(--muted); font-size: 0.85rem; }
-    footer a { color: var(--muted); }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+    .price-card { background: var(--bg); border: 1px solid var(--border); border-radius: 16px; padding: 36px 32px; position: relative; }
+    .price-card.featured { border-color: var(--amber); box-shadow: 0 0 0 1px var(--amber), 0 8px 30px rgba(245,158,11,0.1); }
+    .price-card.featured::before { content: 'Popular'; position: absolute; top: -12px; left: 32px; background: var(--amber); color: #fff; font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 20px; }
+    .price-name { font-size: 1.1rem; font-weight: 600; margin-bottom: 8px; }
+    .price-amount { font-size: 2.5rem; font-weight: 800; margin-bottom: 4px; }
+    .price-amount .period { font-size: 1rem; font-weight: 400; color: var(--text-secondary); }
+    .price-desc { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 24px; }
+    .price-features { list-style: none; margin-bottom: 28px; }
+    .price-features li { padding: 8px 0; font-size: 0.9rem; color: var(--text-secondary); display: flex; align-items: flex-start; gap: 10px; border-bottom: 1px solid var(--border); }
+    .price-features li:last-child { border-bottom: none; }
+    .price-features li::before { content: ''; width: 18px; height: 18px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23f59e0b'%3E%3Cpath d='M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z'/%3E%3C/svg%3E") no-repeat center; flex-shrink: 0; margin-top: 2px; }
 
-    @media (max-width: 640px) {
-      .hero h1 { font-size: 2rem; }
-      .hero p { font-size: 1.05rem; }
-      nav .links { gap: 1rem; }
+    footer { border-top: 1px solid var(--border); padding: 40px 0; margin-top: 80px; }
+    footer .inner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+    footer .links { display: flex; gap: 24px; font-size: 0.85rem; color: var(--text-secondary); }
+    footer .links a:hover { color: var(--text); }
+    footer .copy { font-size: 0.8rem; color: #94a3b8; }
+
+    .notice-box { background: var(--amber-light); border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; font-size: 0.9rem; color: #92400e; }
+
+    @media (max-width: 768px) {
+      .nav-links { display: none; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .pricing-grid { grid-template-columns: 1fr; }
+      .consensus-box { grid-template-columns: 1fr; gap: 32px; }
+      .hero { padding: 60px 0 40px; }
     }
   </style>
 </head>
 <body>
 
-<nav>
-  <div class="logo">PingDog</div>
-  <div class="links">
-    <a href="#features">Features</a>
-    <a href="#pricing">Pricing</a>
-    <a href="#api">API</a>
-    <a href="dashboard.html">Dashboard</a>
-    <a href="#pricing" class="btn btn-primary">Get Started</a>
-  </div>
-</nav>
+  <nav>
+    <div class="container inner">
+      <a href="/" class="logo">
+        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#f59e0b"/>
+          <circle cx="16" cy="16" r="4" fill="#fff"/>
+          <circle cx="16" cy="16" r="8" stroke="#fff" stroke-width="2" fill="none" opacity=".65"/>
+          <circle cx="16" cy="16" r="12" stroke="#fff" stroke-width="1.5" fill="none" opacity=".3"/>
+        </svg>
+        <span>Ping<span style="color:var(--amber)">Dog</span></span>
+      </a>
+      <div class="nav-links">
+        <a href="#monitors">What we monitor</a>
+        <a href="#pricing">Pricing</a>
+        <a href="/docs.html">Docs</a>
+        <a href="/account.html">Account</a>
+        <a href="/terms.html">Terms</a>
+      </div>
+      <a href="#top" class="btn btn-primary">Get Free Key</a>
+    </div>
+  </nav>
 
-<section class="hero">
-  <h1>Is your site <span>really</span> up?</h1>
-  <p>Check from 4 continents simultaneously. Detect regional outages before your users do. Know in seconds, not minutes.</p>
-  <div class="hero-btns">
-    <a href="#pricing" class="btn btn-primary">Start Free Monitoring</a>
-    <a href="#api" class="btn btn-outline">View API Docs</a>
-  </div>
-</section>
+  <main>
+    <section class="hero" id="top">
+      <div class="container">
+        <h1>Monitor your APIs, RPCs,<br>and <span class="accent">AI agents</span> — from 4 continents</h1>
+        <p>The only uptime monitor that speaks blockchain and AI natively. Consensus-based detection eliminates false positives. Free forever for 3 monitors.</p>
 
-<div class="locations">
-  <div class="location"><div class="dot"></div> Canada</div>
-  <div class="location"><div class="dot"></div> Frankfurt</div>
-  <div class="location"><div class="dot"></div> Singapore</div>
-  <div class="location"><div class="dot"></div> United Kingdom</div>
-</div>
+        <div id="keygen-box">
+          <div style="font-size:1.15rem;font-weight:700;margin-bottom:6px;">Start free — no email, no account</div>
+          <div style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:20px;">Your key is your identity. 3 monitors, 5-minute checks, 2 regions — free forever.</div>
+          <button class="btn btn-primary" id="gen-btn" onclick="generateKey()" style="width:100%;padding:14px;font-size:1rem;">Get my free monitoring key</button>
+          <div id="key-display">
+            <span id="key-text"></span>
+            <svg onclick="copyKey()" style="position:absolute;top:50%;right:12px;transform:translateY(-50%);cursor:pointer;opacity:0.6;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+          </div>
+          <div id="key-warning">Save this key — it will not be shown again. Use it to add monitors and view your status page.</div>
+          <div id="key-usage">
+            <div style="color:#64748b;margin-bottom:8px;font-size:0.8rem;">Add your first monitor:</div>
+            <svg onclick="copySnippet()" style="position:absolute;top:12px;right:12px;cursor:pointer;opacity:0.5;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+            <pre id="key-snippet" style="margin:0;background:none;padding:0;border:none;font-size:0.75rem;color:#e2e8f0;white-space:pre-wrap;word-break:break-all;padding-right:30px;"></pre>
+          </div>
+          <div id="key-cta" style="display:none;margin-top:16px;">
+            <a href="/account.html" class="btn btn-primary" style="width:100%;padding:12px;font-size:0.9rem;display:flex;justify-content:center;">Open account dashboard &rarr;</a>
+          </div>
+        </div>
 
-<section class="features" id="features">
-  <h2>Why PingDog?</h2>
-  <div class="features-grid">
-    <div class="feature-card">
-      <h3>4 Continents, Simultaneously</h3>
-      <p>Every check runs from North America, Europe, and Asia at the same time. If your site is down in Asia but up in Europe, we detect it instantly.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Regional Outage Detection</h3>
-      <p>Most monitors check from one location. We use majority consensus across all nodes — no false alarms, no missed outages.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Multi-Protocol Checks</h3>
-      <p>HTTP, HTTPS, TCP, DNS, and SSL certificate monitoring. Track response times, status codes, and certificate expiry from every location.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Smart Alerting</h3>
-      <p>Webhook, email, and Telegram notifications. Alerts fire only on state transitions — no alert fatigue from repeated pings.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Public Status Pages</h3>
-      <p>Share a live status dashboard with your users. Embed it on your site or link from your footer. Always up to date.</p>
-    </div>
-    <div class="feature-card">
-      <h3>Pay by Card or USDC</h3>
-      <p>Visa, Mastercard, and USDC accepted. No crypto wallet needed &mdash; pay with your regular credit card. No subscriptions that auto-renew.</p>
-    </div>
-  </div>
-</section>
+        <div style="margin-top:20px;">
+          <a href="#monitors" class="btn btn-outline">See what we monitor</a>
+        </div>
+      </div>
+    </section>
 
-<section class="how-it-works">
-  <h2>How It Works</h2>
-  <div class="steps">
-    <div class="step">
-      <div class="step-num">1</div>
-      <h3>Add a URL</h3>
-      <p>Enter the URL you want to monitor. Choose HTTP, TCP, DNS, or SSL check type.</p>
+    <div class="container">
+      <div class="stats">
+        <div class="stat"><div class="stat-value">4</div><div class="stat-label">Continents</div></div>
+        <div class="stat"><div class="stat-value">7</div><div class="stat-label">Check types</div></div>
+        <div class="stat"><div class="stat-value">30s</div><div class="stat-label">Min interval</div></div>
+        <div class="stat"><div class="stat-value">3+</div><div class="stat-label">Consensus to alert</div></div>
+      </div>
     </div>
-    <div class="step">
-      <div class="step-num">2</div>
-      <h3>We Check Globally</h3>
-      <p>Checker nodes in 4 locations hit your endpoint simultaneously at your chosen interval.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">3</div>
-      <h3>Get Alerted</h3>
-      <p>If majority of locations report failure, we alert you instantly via webhook, email, or Telegram.</p>
-    </div>
-    <div class="step">
-      <div class="step-num">4</div>
-      <h3>Share Status</h3>
-      <p>Give your users a public status page showing real-time availability from all locations.</p>
-    </div>
-  </div>
-</section>
 
-<section class="pricing" id="pricing">
-  <h2>Simple Pricing</h2>
-  <p class="subtitle">Pay with Visa, Mastercard, or USDC. No surprises. Cancel anytime.</p>
-  <div class="pricing-grid">
-    <div class="price-card">
-      <h3>Free</h3>
-      <div class="price">$0 <span>/mo</span></div>
-      <p class="price-note">Get started instantly</p>
-      <ul>
-        <li>5 monitors</li>
-        <li>5-minute check interval</li>
-        <li>2 check locations</li>
-        <li>Webhook alerts</li>
-        <li>Public status page</li>
-      </ul>
-      <a href="#" class="btn btn-outline" style="width:100%">Get Started Free</a>
+    <section id="monitors" class="section">
+      <div class="container">
+        <h2 class="section-title">What PingDog monitors</h2>
+        <p class="section-sub">Seven check types, including three that nobody else offers. Built for the modern stack — APIs, blockchain nodes, and AI agents.</p>
+        <div class="checks-grid">
+          <div class="check-card">
+            <div class="check-icon">🌐</div>
+            <div class="check-name">HTTP / HTTPS</div>
+            <div class="check-desc">Status code, response time, and body match. Catch 5xx errors, wrong content, and slow responses before your users do.</div>
+          </div>
+          <div class="check-card">
+            <div class="check-icon">🔌</div>
+            <div class="check-name">TCP Port</div>
+            <div class="check-desc">Is the port open? How fast does it connect? Monitor databases, mail servers, and raw TCP services.</div>
+          </div>
+          <div class="check-card">
+            <div class="check-icon">🔎</div>
+            <div class="check-name">DNS Resolution</div>
+            <div class="check-desc">Resolution time, resolved IPs, and NXDOMAIN detection. Know when DNS propagation breaks your service.</div>
+          </div>
+          <div class="check-card">
+            <div class="check-icon">🔒</div>
+            <div class="check-name">SSL Certificate</div>
+            <div class="check-desc">Certificate validity and days until expiry. Get alerted 30 days before your cert expires — not after it already has.</div>
+          </div>
+          <div class="check-card unique">
+            <div class="check-icon">&#x26D3;&#xFE0F;</div>
+            <div class="check-name">RPC Health</div>
+            <div class="check-desc">Block height, sync status, and staleness detection. Know if your node is stuck or 200 blocks behind without checking manually.</div>
+          </div>
+          <div class="check-card unique">
+            <div class="check-icon">🤖</div>
+            <div class="check-name">A2A Agent</div>
+            <div class="check-desc">Discovers the agent card, verifies required fields, and pings the agent endpoint. Catch broken AI agents before they fail in production.</div>
+          </div>
+          <div class="check-card unique">
+            <div class="check-icon">🛠️</div>
+            <div class="check-name">MCP Server</div>
+            <div class="check-desc">Connects via WebSocket, sends a tools/list request, and verifies the tool catalog returns. Know your MCP server is alive and responding.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" style="background:var(--bg-alt);padding:80px 0;">
+      <div class="container">
+        <div class="consensus-box">
+          <div>
+            <h2 class="section-title" style="margin-bottom:16px;">No more false alarms</h2>
+            <p style="color:var(--text-secondary);margin-bottom:20px;">PingDog checks from multiple continents simultaneously. We only declare DOWN when the majority agrees. A transient blip in Singapore does not wake you up at 3am.</p>
+            <ul style="list-style:none;display:flex;flex-direction:column;gap:12px;">
+              <li style="display:flex;align-items:flex-start;gap:12px;font-size:0.9rem;color:var(--text-secondary);">
+                <span style="background:var(--amber);color:#fff;border-radius:4px;padding:2px 8px;font-weight:700;font-size:0.75rem;flex-shrink:0;margin-top:1px;">4 regions</span>
+                Need 3+ failures to declare DOWN
+              </li>
+              <li style="display:flex;align-items:flex-start;gap:12px;font-size:0.9rem;color:var(--text-secondary);">
+                <span style="background:var(--amber);color:#fff;border-radius:4px;padding:2px 8px;font-weight:700;font-size:0.75rem;flex-shrink:0;margin-top:1px;">3 regions</span>
+                Need 2+ failures to declare DOWN
+              </li>
+              <li style="display:flex;align-items:flex-start;gap:12px;font-size:0.9rem;color:var(--text-secondary);">
+                <span style="background:var(--amber);color:#fff;border-radius:4px;padding:2px 8px;font-weight:700;font-size:0.75rem;flex-shrink:0;margin-top:1px;">Free tier</span>
+                2 regions — both must fail
+              </li>
+            </ul>
+          </div>
+          <div>
+            <div style="font-size:0.8rem;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Check locations</div>
+            <div class="consensus-map">
+              <div class="region-dot">
+                <div class="dot dot-green"></div>
+                <div><div class="region-name">Canada</div><div class="region-ms">Toronto</div></div>
+              </div>
+              <div class="region-dot">
+                <div class="dot dot-green"></div>
+                <div><div class="region-name">Germany</div><div class="region-ms">Frankfurt</div></div>
+              </div>
+              <div class="region-dot">
+                <div class="dot dot-green"></div>
+                <div><div class="region-name">Singapore</div><div class="region-ms">Asia-Pacific</div></div>
+              </div>
+              <div class="region-dot">
+                <div class="dot dot-amber"></div>
+                <div><div class="region-name">UK</div><div class="region-ms">Coming soon</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <h2 class="section-title">Get started in 60 seconds</h2>
+        <p class="section-sub">No account, no email, no credit card. Your key is your identity.</p>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <h3>Get your key</h3>
+            <p>Click the button above. Your key is generated in your browser. Save it somewhere safe — it is not stored anywhere.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <h3>Add monitors</h3>
+            <p>Use the account page or the API. Name your monitor, pick the type, set the URL. Done in 30 seconds.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <h3>Get alerts</h3>
+            <p>Add a webhook or Telegram chat. We notify you the moment consensus says your service is down.</p>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <h3>Share your status</h3>
+            <p>Every account gets a public status page. Share it with customers. No code, no hosting required.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="pricing" class="section" style="background:var(--bg-alt);padding:80px 0;">
+      <div class="container">
+        <h2 class="section-title">Simple pricing</h2>
+        <p class="section-sub">No contracts, no seat fees. Pay monthly via USDC approval. Cancel by revoking the approval — no forms, no email.</p>
+        <div class="pricing-grid">
+
+          <div class="price-card">
+            <div class="price-name">Free</div>
+            <div class="price-amount">$0<span class="period">/mo</span></div>
+            <div class="price-desc">Everything you need to start monitoring.</div>
+            <ul class="price-features">
+              <li>3 monitors</li>
+              <li>5-minute check interval</li>
+              <li>2 regions (Canada + Germany)</li>
+              <li>All 7 check types</li>
+              <li>Public status page</li>
+              <li>Webhook + Telegram alerts</li>
+              <li>30-day history</li>
+            </ul>
+            <button class="btn btn-primary" onclick="document.getElementById('keygen-box').scrollIntoView({behavior:'smooth'})" style="width:100%">Get started free</button>
+          </div>
+
+          <div class="price-card featured">
+            <div class="price-name">Pro</div>
+            <div class="price-amount">$9.73<span class="period">/mo</span></div>
+            <div class="price-desc">For developers and small teams with real uptime requirements.</div>
+            <ul class="price-features">
+              <li>50 monitors</li>
+              <li>1-minute check interval</li>
+              <li>All 4 regions</li>
+              <li>All 7 check types</li>
+              <li>Custom status page title</li>
+              <li>Webhook + Telegram alerts</li>
+              <li>90-day history</li>
+              <li>SSL expiry alerts (30d, 7d, 1d)</li>
+            </ul>
+            <a href="/account.html" class="btn btn-primary" style="width:100%;display:flex;justify-content:center;">Upgrade in account &rarr;</a>
+          </div>
+
+          <div class="price-card">
+            <div class="price-name">Business</div>
+            <div class="price-amount">$47.21<span class="period">/mo</span></div>
+            <div class="price-desc">For teams running production infrastructure at scale.</div>
+            <ul class="price-features">
+              <li>500 monitors</li>
+              <li>30-second check interval</li>
+              <li>All 4 regions</li>
+              <li>All 7 check types</li>
+              <li>Custom status page branding</li>
+              <li>Priority alerting</li>
+              <li>1-year history</li>
+              <li>Full API access</li>
+              <li>Incident timeline export</li>
+            </ul>
+            <a href="/account.html" class="btn btn-primary" style="width:100%;display:flex;justify-content:center;">Upgrade in account &rarr;</a>
+          </div>
+
+        </div>
+        <div class="notice-box" style="margin-top:32px;text-align:center;">
+          Billing uses USDC/USDT on our Demo L2 for testing. Your funds stay in your wallet — we pull monthly. Revoke the approval to cancel instantly.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="container inner">
+      <div class="logo" style="font-size:1rem;">
+        <svg viewBox="0 0 32 32" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#f59e0b"/>
+          <circle cx="16" cy="16" r="4" fill="#fff"/>
+          <circle cx="16" cy="16" r="8" stroke="#fff" stroke-width="2" fill="none" opacity=".65"/>
+          <circle cx="16" cy="16" r="12" stroke="#fff" stroke-width="1.5" fill="none" opacity=".3"/>
+        </svg>
+        PingDog
+      </div>
+      <div class="links">
+        <a href="/docs.html">Docs</a>
+        <a href="/account.html">Account</a>
+        <a href="/terms.html">Terms</a>
+        <a href="/status.html">Status</a>
+      </div>
+      <div class="copy">&copy; 2026 PingDog</div>
     </div>
-    <div class="price-card featured">
-      <h3>Pro</h3>
-      <div class="price">$10 <span>/mo</span></div>
-      <p class="price-note">For growing teams</p>
-      <ul>
-        <li>50 monitors</li>
-        <li>1-minute check interval</li>
-        <li>All 4 locations</li>
-        <li>Webhook + email + Telegram</li>
-        <li>Public status page</li>
-        <li>SSL certificate monitoring</li>
-      </ul>
-      <a href="#" class="btn btn-primary" style="width:100%">Start Pro</a>
-    </div>
-    <div class="price-card">
-      <h3>Business</h3>
-      <div class="price">$50 <span>/mo</span></div>
-      <p class="price-note">For serious operations</p>
-      <ul>
-        <li>500 monitors</li>
-        <li>30-second check interval</li>
-        <li>All 4 locations</li>
-        <li>All alert channels</li>
-        <li>Priority support</li>
-        <li>Custom status page domain</li>
-        <li>API access</li>
-      </ul>
-      <a href="#" class="btn btn-outline" style="width:100%">Contact Us</a>
-    </div>
-  </div>
-  <p style="text-align:center; color:var(--muted); font-size:0.85rem; margin-top:2rem;">Visa and Mastercard accepted &mdash; no crypto wallet needed.</p>
-</section>
+  </footer>
 
-<section class="api-example" id="api">
-  <h2>API-First Design</h2>
-  <div class="code-block">
-<span class="comment"># Create a monitor</span>
-curl -X POST https://api.watchdog.example.com/v1/monitors \
-  -H <span class="string">'Content-Type: application/json'</span> \
-  -H <span class="string">'X-API-Key: your-api-key'</span> \
-  -d <span class="string">'{
-    "url": "https://my-app.com",
-    "type": "http",
-    "interval_seconds": 60,
-    "alert_channels": ["webhook", "email"],
-    "webhook_url": "https://hooks.slack.com/...",
-    "alert_email": "ops@company.com"
-  }'</span>
+  <script>
+    var generatedKey = null;
 
-<span class="comment"># Response</span>
-{
-  <span class="string">"id"</span>: <span class="string">"a1b2c3d4-..."</span>,
-  <span class="string">"url"</span>: <span class="string">"https://my-app.com"</span>,
-  <span class="string">"status"</span>: <span class="string">"unknown"</span>,
-  <span class="string">"interval_seconds"</span>: 60,
-  <span class="string">"created_at"</span>: <span class="string">"2026-04-09T12:00:00Z"</span>
-}
-  </div>
-</section>
+    function generateKey() {
+      var arr = new Uint8Array(32);
+      crypto.getRandomValues(arr);
+      var hex = Array.from(arr).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+      generatedKey = 'pdk_' + hex;
 
-<section class="comparison">
-  <h2>How We Compare</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Feature</th>
-        <th>PingDog</th>
-        <th>Pingdom</th>
-        <th>UptimeRobot</th>
-        <th>Better Uptime</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr class="highlight-row">
-        <td>Check locations</td>
-        <td>4 continents</td>
-        <td>1-3 regions</td>
-        <td>1 region (free)</td>
-        <td>3 regions</td>
-      </tr>
-      <tr>
-        <td>Minimum interval</td>
-        <td>30 seconds</td>
-        <td>1 minute</td>
-        <td>5 minutes (free)</td>
-        <td>30 seconds</td>
-      </tr>
-      <tr>
-        <td>Starting price</td>
-        <td>Free / $10/mo</td>
-        <td>$15/mo</td>
-        <td>Free / $7/mo</td>
-        <td>$20/mo</td>
-      </tr>
-      <tr>
-        <td>Card + USDC payment</td>
-        <td>Yes</td>
-        <td>No</td>
-        <td>No</td>
-        <td>No</td>
-      </tr>
-      <tr>
-        <td>Regional outage detection</td>
-        <td>Yes</td>
-        <td>Limited</td>
-        <td>No</td>
-        <td>Limited</td>
-      </tr>
-      <tr>
-        <td>Status pages</td>
-        <td>Included</td>
-        <td>Extra cost</td>
-        <td>Free</td>
-        <td>Included</td>
-      </tr>
-    </tbody>
-  </table>
-</section>
+      document.getElementById('key-text').textContent = generatedKey;
+      document.getElementById('key-display').style.display = 'block';
+      document.getElementById('key-warning').style.display = 'block';
+      document.getElementById('key-usage').style.display = 'block';
+      document.getElementById('key-cta').style.display = 'block';
+      document.getElementById('gen-btn').textContent = 'Key generated \u2713';
+      document.getElementById('gen-btn').disabled = true;
+      document.getElementById('gen-btn').style.opacity = '0.7';
 
-<footer>
-  <p><a href="terms.html">Terms of Service</a> &middot; <a href="mailto:support@pingdog.net">Contact</a></p>
-  <p style="margin-top:0.5rem">Uptime monitoring from 4 continents.</p>
-  <div style="margin-top:1rem;display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;font-size:0.8rem;">
-    <span style="color:var(--muted)">Also from us:</span>
-    <a href="https://sertone.net" style="color:var(--muted)">Sertone</a>
-    <a href="https://l2aas.net" style="color:var(--muted)">L2aaS</a>
-    <a href="https://chainrpc.net" style="color:var(--muted)">ChainRPC</a>
-    <a href="https://chainclone.net" style="color:var(--muted)">ChainClone</a>
-    <a href="https://theloadtester.com" style="color:var(--muted)">LoadTester</a>
-    <a href="https://swarmbrowser.net" style="color:var(--muted)">SwarmBrowser</a>
-  </div>
-  <p style="margin-top:0.5rem">&copy; 2026 PingDog</p>
-</footer>
+      var snippet = 'curl -X POST https://api.pingdog.net/api/monitors \\\n' +
+        '  -H "X-API-Key: ' + generatedKey + '" \\\n' +
+        '  -H "Content-Type: application/json" \\\n' +
+        '  -d \'{"name":"My API","type":"http","url":"https://yoursite.com","interval_seconds":300}\'';
+      document.getElementById('key-snippet').textContent = snippet;
 
+      try { localStorage.setItem('pingdog_key', generatedKey); } catch(e) {}
+    }
+
+    function copyKey() {
+      if (generatedKey) navigator.clipboard.writeText(generatedKey).catch(function(){});
+    }
+
+    function copySnippet() {
+      var t = document.getElementById('key-snippet').textContent;
+      if (t) navigator.clipboard.writeText(t).catch(function(){});
+    }
+
+    // Register service worker for PWA
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function(){});
+    }
+  </script>
 </body>
 </html>

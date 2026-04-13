@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PingDog Documentation — Uptime Monitoring API</title>
+  <meta name="description" content="PingDog documentation: how to add monitors via API, check types explained (HTTP, TCP, DNS, SSL, RPC, A2A, MCP), alert configuration, and public status pages.">
+  <link rel="canonical" href="https://pingdog.net/docs.html">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f59e0b'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='8' stroke='%23fff' stroke-width='2' fill='none' opacity='.6'/%3E%3Ccircle cx='16' cy='16' r='12' stroke='%23fff' stroke-width='1.5' fill='none' opacity='.3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --amber: #f59e0b;
+      --amber-dim: #d97706;
+      --amber-light: #fffbeb;
+      --text: #1a1a2e;
+      --text-secondary: #555770;
+      --bg: #ffffff;
+      --bg-alt: #f7f8fc;
+      --border: #e4e7ec;
+      --green: #10b981;
+      --radius: 10px;
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; -webkit-font-smoothing: antialiased; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    a { color: var(--amber-dim); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
+
+    nav { position: sticky; top: 0; z-index: 100; background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); }
+    nav .inner { max-width: 800px; margin: 0 auto; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.2rem; letter-spacing: -0.5px; color: var(--text); }
+    .logo svg { width: 28px; height: 28px; }
+    .nav-links { display: flex; gap: 24px; font-size: 0.9rem; font-weight: 500; }
+    .nav-links a { color: var(--text-secondary); }
+    .nav-links a:hover, .nav-links a.active { color: var(--text); text-decoration: none; }
+
+    h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -1px; margin: 48px 0 16px; }
+    h2 { font-size: 1.5rem; font-weight: 700; margin: 48px 0 16px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--text); }
+    h3 { font-size: 1.1rem; font-weight: 600; margin: 32px 0 12px; color: var(--text); }
+    p { margin-bottom: 16px; color: var(--text-secondary); }
+    ul, ol { margin-bottom: 16px; padding-left: 24px; color: var(--text-secondary); }
+    li { margin-bottom: 8px; }
+    strong { color: var(--text); }
+    code { background: var(--bg-alt); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; color: var(--text); }
+    pre { background: #1e293b; color: #e2e8f0; border-radius: 10px; padding: 20px 24px; overflow-x: auto; margin-bottom: 24px; font-size: 0.85rem; line-height: 1.6; }
+    pre code { background: none; border: none; padding: 0; color: inherit; font-size: inherit; }
+    .comment { color: #64748b; }
+    .str { color: #86efac; }
+    .kw { color: #93c5fd; }
+    .num { color: #fcd34d; }
+
+    table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 0.9rem; }
+    th { text-align: left; padding: 10px 14px; background: var(--bg-alt); border: 1px solid var(--border); font-weight: 600; }
+    td { padding: 10px 14px; border: 1px solid var(--border); color: var(--text-secondary); }
+    td code { font-size: 0.8rem; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.3px; }
+    .badge-amber { background: var(--amber-light); color: var(--amber-dim); border: 1px solid #fde68a; }
+    .badge-green { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+
+    .method { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
+    .get { background: #f0fdf4; color: #166534; }
+    .post { background: #eff6ff; color: #1d4ed8; }
+    .put { background: #fffbeb; color: #92400e; }
+    .delete { background: #fef2f2; color: #991b1b; }
+
+    .endpoint-block { background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+    .endpoint-title { font-size: 1rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
+    .endpoint-desc { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0; }
+
+    .notice { background: var(--amber-light); border: 1px solid #fde68a; border-radius: 8px; padding: 14px 18px; font-size: 0.9rem; color: #92400e; margin: 20px 0; }
+
+    footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 64px; text-align: center; font-size: 0.8rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <div class="inner">
+      <a href="/" class="logo" style="text-decoration:none;">
+        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#f59e0b"/>
+          <circle cx="16" cy="16" r="4" fill="#fff"/>
+          <circle cx="16" cy="16" r="8" stroke="#fff" stroke-width="2" fill="none" opacity=".65"/>
+          <circle cx="16" cy="16" r="12" stroke="#fff" stroke-width="1.5" fill="none" opacity=".3"/>
+        </svg>
+        Ping<span style="color:var(--amber)">Dog</span>
+      </a>
+      <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/docs.html" class="active">Docs</a>
+        <a href="/account.html">Account</a>
+        <a href="/terms.html">Terms</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container" style="padding-bottom:80px;">
+
+    <h1>Documentation</h1>
+
+    <h2 id="quickstart">Quick start</h2>
+    <p>Get a key, create a monitor, start getting checks. No registration. Your key <em>is</em> your account.</p>
+
+    <h3>Step 1: Generate a key</h3>
+    <p>Go to <a href="/">pingdog.net</a> and click "Get my free monitoring key". Your key starts with <code>pdk_</code>. Save it — it is not stored anywhere else.</p>
+
+    <h3>Step 2: Create your first monitor</h3>
+    <pre><code>curl -X POST https://api.pingdog.net/api/monitors \
+  -H <span class="str">"X-API-Key: pdk_YOUR_KEY"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d '{
+    <span class="str">"name"</span>: <span class="str">"My API"</span>,
+    <span class="str">"type"</span>: <span class="str">"http"</span>,
+    <span class="str">"url"</span>:  <span class="str">"https://api.example.com/health"</span>,
+    <span class="str">"interval_seconds"</span>: <span class="num">300</span>
+  }'</code></pre>
+
+    <h3>Step 3: View results</h3>
+    <pre><code>curl https://api.pingdog.net/api/monitors/pdk_KEYHASH \
+  -H <span class="str">"X-API-Key: pdk_YOUR_KEY"</span></code></pre>
+
+    <h2 id="check-types">Check types</h2>
+    <p>PingDog supports 7 check types. The <code>type</code> field in the monitor object controls which logic is used.</p>
+
+    <table>
+      <tr><th>Type value</th><th>What it checks</th><th>Unique?</th></tr>
+      <tr><td><code>http</code></td><td>HTTP/HTTPS status code, response time, body match</td><td></td></tr>
+      <tr><td><code>tcp</code></td><td>TCP port open, connect time</td><td></td></tr>
+      <tr><td><code>dns</code></td><td>DNS resolution time, resolved IPs</td><td></td></tr>
+      <tr><td><code>ssl</code></td><td>Certificate validity, days until expiry</td><td></td></tr>
+      <tr><td><code>rpc</code></td><td>Block height, sync status, staleness</td><td><span class="badge badge-amber">Only PingDog</span></td></tr>
+      <tr><td><code>a2a</code></td><td>Agent card discovery, capabilities, ping</td><td><span class="badge badge-amber">Only PingDog</span></td></tr>
+      <tr><td><code>mcp</code></td><td>WebSocket connect, tools/list, response time</td><td><span class="badge badge-amber">Only PingDog</span></td></tr>
+    </table>
+
+    <h3>HTTP / HTTPS</h3>
+    <p>Makes an HTTP request and validates the response. Optional: match a string in the response body.</p>
+    <pre><code>{
+  <span class="str">"type"</span>: <span class="str">"http"</span>,
+  <span class="str">"url"</span>: <span class="str">"https://api.example.com/health"</span>,
+  <span class="str">"method"</span>: <span class="str">"GET"</span>,               <span class="comment">// GET or POST</span>
+  <span class="str">"expect_status"</span>: <span class="num">200</span>,          <span class="comment">// default 200</span>
+  <span class="str">"expect_body"</span>: <span class="str">"\"ok\":true"</span>   <span class="comment">// optional substring match</span>
+}</code></pre>
+
+    <h3>TCP Port</h3>
+    <p>Attempts a TCP connection to the host and port. Pass the target as <code>tcp://host:port</code>.</p>
+    <pre><code>{
+  <span class="str">"type"</span>: <span class="str">"tcp"</span>,
+  <span class="str">"url"</span>: <span class="str">"tcp://db.example.com:5432"</span>
+}</code></pre>
+
+    <h3>DNS</h3>
+    <p>Resolves the hostname and checks the answer. Useful for detecting DNS hijacking or propagation failures.</p>
+    <pre><code>{
+  <span class="str">"type"</span>: <span class="str">"dns"</span>,
+  <span class="str">"url"</span>: <span class="str">"https://example.com"</span>    <span class="comment">// hostname extracted automatically</span>
+}</code></pre>
+
+    <h3>SSL Certificate</h3>
+    <p>Connects via TLS and reads the certificate expiry date. You are alerted when <code>ssl_days_left</code> falls below thresholds (30d, 7d, 1d on Pro+).</p>
+    <pre><code>{
+  <span class="str">"type"</span>: <span class="str">"ssl"</span>,
+  <span class="str">"url"</span>: <span class="str">"https://example.com"</span>
+}</code></pre>
+
+    <h3>RPC Health <span class="badge badge-amber">Only PingDog</span></h3>
+    <p>Calls <code>eth_blockNumber</code> on the RPC endpoint and checks: valid JSON-RPC response, block height is a valid hex number, and the block is not stale (moving forward over time).</p>
+    <pre><code>{
+  <span class="str">"type"</span>: <span class="str">"rpc"</span>,
+  <span class="str">"url"</span>: <span class="str">"https://mainnet.infura.io/v3/YOUR_KEY"</span>
+}</code></pre>
+    <p>Result fields include: <code>block_number</code>, <code>is_syncing</code>, <code>is_stale</code> (true if the block did not advance vs previous check).</p>
+
+    <h3>A2A Agent <span class="badge badge-amber">Only PingDog</span></h3>
+    <p>Performs a 3-step health check on an A2A-compatible AI agent:</p>
+    <ol>
+      <li>GET <code>/.well-known/agent-card.json</code> — must return valid JSON</li>
+      <li>Verifies the card has <code>name</code>, <code>capabilities</code>, and <code>endpoint</code> fields</li>
+      <li>POSTs a minimal ping to the agent endpoint and checks for a response</li>
+    </ol>
+    <pre><code>{
+  <span class="str">"type"</span>: <span class="str">"a2a"</span>,
+  <span class="str">"url"</span>: <span class="str">"https://agent.example.com"</span>
+}</code></pre>
+
+    <h3>MCP Server <span class="badge badge-amber">Only PingDog</span></h3>
+    <p>Connects via WebSocket and verifies the MCP server can list its tools. The check times out if the connection fails or <code>tools/list</code> returns no response within the timeout window.</p>
+    <pre><code>{
+  <span class="str">"type"</span>: <span class="str">"mcp"</span>,
+  <span class="str">"url"</span>: <span class="str">"wss://mcp.example.com/ws"</span>
+}</code></pre>
+
+    <h2 id="api">API Reference</h2>
+    <p>Base URL: <code>https://api.pingdog.net</code></p>
+    <p>All requests require the header <code>X-API-Key: pdk_YOUR_KEY</code>.</p>
+
+    <h3>Monitors</h3>
+
+    <div class="endpoint-block">
+      <div class="endpoint-title"><span class="method post">POST</span>/api/monitors</div>
+      <div class="endpoint-desc">Create a new monitor.</div>
+    </div>
+    <p>Request body:</p>
+    <pre><code>{
+  <span class="str">"name"</span>:             <span class="str">"My API"</span>,        <span class="comment">// required</span>
+  <span class="str">"type"</span>:             <span class="str">"http"</span>,         <span class="comment">// required: http|tcp|dns|ssl|rpc|a2a|mcp</span>
+  <span class="str">"url"</span>:              <span class="str">"https://..."</span>,  <span class="comment">// required</span>
+  <span class="str">"interval_seconds"</span>: <span class="num">300</span>,            <span class="comment">// 300|60|30 (tier-limited)</span>
+  <span class="str">"timeout_ms"</span>:       <span class="num">10000</span>,          <span class="comment">// optional, default 10000</span>
+  <span class="str">"method"</span>:           <span class="str">"GET"</span>,          <span class="comment">// http only: GET|POST</span>
+  <span class="str">"expect_status"</span>:    <span class="num">200</span>,            <span class="comment">// http only</span>
+  <span class="str">"expect_body"</span>:      <span class="str">"ok"</span>,           <span class="comment">// http only, substring match</span>
+  <span class="str">"regions"</span>:          [<span class="str">"ca"</span>, <span class="str">"de"</span>],   <span class="comment">// optional: ca|de|sg|uk</span>
+  <span class="str">"webhook_url"</span>:      <span class="str">"https://..."</span>, <span class="comment">// optional alert destination</span>
+  <span class="str">"telegram_chat_id"</span>: <span class="str">"-100123456"</span>  <span class="comment">// optional</span>
+}</code></pre>
+
+    <div class="endpoint-block">
+      <div class="endpoint-title"><span class="method get">GET</span>/api/monitors/:keyHash</div>
+      <div class="endpoint-desc">List all active monitors for your key. The <code>keyHash</code> is SHA-256 of your key (hex, first 16 chars). Available in the account page.</div>
+    </div>
+
+    <div class="endpoint-block">
+      <div class="endpoint-title"><span class="method put">PUT</span>/api/monitors/:id</div>
+      <div class="endpoint-desc">Update a monitor. Pass only the fields you want to change.</div>
+    </div>
+
+    <div class="endpoint-block">
+      <div class="endpoint-title"><span class="method delete">DELETE</span>/api/monitors/:id</div>
+      <div class="endpoint-desc">Soft-delete a monitor. History is retained for 30 days.</div>
+    </div>
+
+    <h3>Results</h3>
+
+    <div class="endpoint-block">
+      <div class="endpoint-title"><span class="method get">GET</span>/api/results/:monitorId</div>
+      <div class="endpoint-desc">Get check results for a monitor. Query params: <code>limit</code> (default 100, max 1000), <code>location</code> (filter by region).</div>
+    </div>
+
+    <h3>Status page</h3>
+
+    <div class="endpoint-block">
+      <div class="endpoint-title"><span class="method get">GET</span>/api/status/:keyHash</div>
+      <div class="endpoint-desc">Public status page data. Returns all monitors the customer marked public, with uptime percentages and incident history. No auth required.</div>
+    </div>
+
+    <h2 id="consensus">Consensus algorithm</h2>
+    <p>PingDog runs checks from multiple geographic locations simultaneously. A service is only declared DOWN when a majority of locations agree it is unreachable.</p>
+    <ul>
+      <li><strong>4 regions:</strong> 3 or more must report failure</li>
+      <li><strong>3 regions:</strong> 2 or more must report failure</li>
+      <li><strong>2 regions (free tier):</strong> both must report failure</li>
+    </ul>
+    <p>This prevents false positives from transient routing issues, DNS hiccups, or regional packet loss that only affects one location.</p>
+
+    <h2 id="alerts">Alert configuration</h2>
+    <p>Alerts fire when consensus declares a state change (UP → DOWN or DOWN → UP).</p>
+
+    <h3>Webhook</h3>
+    <p>Set <code>webhook_url</code> on any monitor. PingDog will POST the following JSON body:</p>
+    <pre><code>{
+  <span class="str">"monitor_id"</span>:   <span class="str">"abc123"</span>,
+  <span class="str">"monitor_name"</span>: <span class="str">"My API"</span>,
+  <span class="str">"status"</span>:       <span class="str">"down"</span>,       <span class="comment">// "up" or "down"</span>
+  <span class="str">"locations"</span>:    [<span class="str">"ca"</span>, <span class="str">"de"</span>, <span class="str">"sg"</span>],
+  <span class="str">"latency_ms"</span>:   <span class="num">null</span>,
+  <span class="str">"error"</span>:        <span class="str">"Connection refused"</span>,
+  <span class="str">"timestamp"</span>:    <span class="str">"2026-04-12T14:23:00Z"</span>
+}</code></pre>
+
+    <h3>Telegram</h3>
+    <p>Get a bot token from <a href="https://t.me/BotFather" target="_blank">@BotFather</a> and find your chat ID using <code>@userinfobot</code>. Set <code>telegram_chat_id</code> on any monitor. PingDog will send a message like:</p>
+    <pre><code>🔴 DOWN — My API
+Confirmed from: Canada, Germany, Singapore
+Error: Connection refused
+Time: 2026-04-12 14:23 UTC</code></pre>
+
+    <h2 id="status-page">Public status pages</h2>
+    <p>Every account gets a public status page at:</p>
+    <pre><code>https://pingdog.net/status.html?k=YOUR_KEY_HASH</code></pre>
+    <p>Share this URL with customers. It shows all monitors you marked public, with green/red dot indicators, uptime percentage, and response time trend.</p>
+    <p>Monitors are private by default. Set <code>"public": true</code> on any monitor to include it on the status page.</p>
+
+    <h2 id="pwa">Install as app (PWA)</h2>
+    <p>PingDog is a Progressive Web App. On mobile, open <a href="/">pingdog.net</a> and tap "Add to Home Screen" — it installs like a native app with offline support.</p>
+    <p>On desktop Chrome: click the install icon in the address bar.</p>
+
+    <h2 id="billing">Billing</h2>
+    <p>Free tier is free forever, no payment needed. To upgrade to Pro or Business:</p>
+    <ol>
+      <li>Go to <a href="/account.html">account.html</a> and enter your key</li>
+      <li>Click "Upgrade" and connect your wallet (MetaMask, Rabby, or any EIP-1193 wallet)</li>
+      <li>Approve our billing contract for USDC or USDT on Demo L2 (chain 845302)</li>
+      <li>We pull the monthly subscription. Your funds stay in your wallet until we pull.</li>
+    </ol>
+    <p>Cancel at any time by revoking the USDC/USDT approval in your wallet. No forms, no emails.</p>
+
+    <h2 id="code-examples">Code examples</h2>
+
+    <h3>Node.js</h3>
+    <pre><code><span class="kw">const</span> res = <span class="kw">await</span> fetch(<span class="str">'https://api.pingdog.net/api/monitors'</span>, {
+  method: <span class="str">'POST'</span>,
+  headers: {
+    <span class="str">'X-API-Key'</span>:       <span class="str">'pdk_YOUR_KEY'</span>,
+    <span class="str">'Content-Type'</span>:   <span class="str">'application/json'</span>,
+  },
+  body: JSON.stringify({
+    name:             <span class="str">'My RPC Node'</span>,
+    type:             <span class="str">'rpc'</span>,
+    url:              <span class="str">'https://mainnet.infura.io/v3/KEY'</span>,
+    interval_seconds: <span class="num">60</span>,
+  }),
+});
+<span class="kw">const</span> monitor = <span class="kw">await</span> res.json();
+console.log(monitor.id);</code></pre>
+
+    <h3>Python</h3>
+    <pre><code><span class="kw">import</span> httpx
+
+resp = httpx.post(
+    <span class="str">"https://api.pingdog.net/api/monitors"</span>,
+    headers={<span class="str">"X-API-Key"</span>: <span class="str">"pdk_YOUR_KEY"</span>},
+    json={
+        <span class="str">"name"</span>: <span class="str">"My A2A Agent"</span>,
+        <span class="str">"type"</span>: <span class="str">"a2a"</span>,
+        <span class="str">"url"</span>:  <span class="str">"https://agent.example.com"</span>,
+        <span class="str">"interval_seconds"</span>: <span class="num">300</span>,
+    },
+)
+print(resp.json())</code></pre>
+
+    <h3>curl — list all monitors</h3>
+    <pre><code>curl https://api.pingdog.net/api/monitors/YOUR_KEY_HASH \
+  -H <span class="str">"X-API-Key: pdk_YOUR_KEY"</span> | jq .</code></pre>
+
+  </div>
+
+  <footer>
+    <a href="/" style="color:#94a3b8;">PingDog</a> &middot;
+    <a href="/terms.html" style="color:#94a3b8;">Terms</a> &middot;
+    &copy; 2026 PingDog
+  </footer>
+
+</body>
+</html>

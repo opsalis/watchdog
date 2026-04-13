@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
+import { createHash } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { startScheduler } from './scheduler';
@@ -9,20 +10,29 @@ import { processAlerts } from './alerting';
 const app = express();
 app.use(express.json());
 
+// CORS — allow the website
+app.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-API-Key');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  if (_req.method === 'OPTIONS') { res.sendStatus(204); return; }
+  next();
+});
+
 // --- Config ---
-const PORT = parseInt(process.env.PORT || '3300');
-const DB_PATH = process.env.DB_PATH || './data/watchdog.db';
-const API_KEY = process.env.API_KEY || '';
+const PORT    = parseInt(process.env.PORT    || '3300');
+const DB_PATH = process.env.DB_PATH          || './data/pingdog.db';
 
 // --- Database ---
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-const db = new Database(DB_PATH);
+const db: import('better-sqlite3').Database = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS monitors (
     id TEXT PRIMARY KEY,
+    name TEXT,
     url TEXT NOT NULL,
     type TEXT NOT NULL DEFAULT 'http',
     method TEXT NOT NULL DEFAULT 'GET',
@@ -33,14 +43,14 @@ db.exec(`
     locations TEXT DEFAULT '[]',
     alert_channels TEXT DEFAULT '[]',
     webhook_url TEXT,
-    alert_email TEXT,
     telegram_chat_id TEXT,
     status TEXT NOT NULL DEFAULT 'unknown',
     last_checked_at TEXT,
+    last_latency_ms REAL,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     active INTEGER NOT NULL DEFAULT 1,
-    api_key TEXT,
-    name TEXT
+    public INTEGER NOT NULL DEFAULT 0,
+    key_hash TEXT NOT NULL DEFAULT ''
   );
 
   CREATE TABLE IF NOT EXISTS checks (
@@ -52,6 +62,10 @@ db.exec(`
     latency_ms REAL,
     ssl_valid INTEGER,
     ssl_days_left INTEGER,
+    block_number INTEGER,
+    is_stale INTEGER,
+    agent_name TEXT,
+    mcp_tools_count INTEGER,
     error TEXT,
     checked_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -59,6 +73,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS incidents (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     monitor_id TEXT NOT NULL REFERENCES monitors(id) ON DELETE CASCADE,
+    monitor_name TEXT,
     type TEXT NOT NULL,
     from_status TEXT NOT NULL,
     to_status TEXT NOT NULL,
@@ -68,83 +83,103 @@ db.exec(`
   );
 
   CREATE INDEX IF NOT EXISTS idx_checks_monitor ON checks(monitor_id, checked_at DESC);
+  CREATE INDEX IF NOT EXISTS idx_monitors_keyhash ON monitors(key_hash);
   CREATE INDEX IF NOT EXISTS idx_incidents_monitor ON incidents(monitor_id, started_at DESC);
 `);
 
-// --- Auth Middleware ---
+// --- Auth middleware (key-hash based) ---
 function authenticate(req: Request, res: Response, next: NextFunction): void {
-  if (!API_KEY) { next(); return; }
   const key = req.headers['x-api-key'] as string;
-  if (key !== API_KEY) {
-    res.status(401).json({ error: 'Invalid API key' });
+  if (!key || !key.startsWith('pdk_')) {
+    res.status(401).json({ error: 'Missing or invalid X-API-Key header' });
     return;
   }
+  // Compute key hash and attach to request
+  (req as any).keyHash = createHash('sha256').update(key).digest('hex').substring(0, 16);
   next();
+}
+
+// --- Tier limits (extend when billing goes live) ---
+function getTierLimits(_keyHash: string): { monitors: number; minInterval: number; regions: string[] } {
+  // All free for now. Billing contract integration will update this.
+  return { monitors: 3, minInterval: 300, regions: ['ca', 'de'] };
 }
 
 // --- Prepared Statements ---
 const insertMonitor = db.prepare(`
-  INSERT INTO monitors (id, url, type, method, interval_seconds, timeout_ms, expect_status, expect_body, locations, alert_channels, webhook_url, alert_email, telegram_chat_id, api_key, name)
-  VALUES (@id, @url, @type, @method, @interval_seconds, @timeout_ms, @expect_status, @expect_body, @locations, @alert_channels, @webhook_url, @alert_email, @telegram_chat_id, @api_key, @name)
+  INSERT INTO monitors (id, name, url, type, method, interval_seconds, timeout_ms, expect_status, expect_body, locations, webhook_url, telegram_chat_id, key_hash, public)
+  VALUES (@id, @name, @url, @type, @method, @interval_seconds, @timeout_ms, @expect_status, @expect_body, @locations, @webhook_url, @telegram_chat_id, @key_hash, @public)
 `);
 
-const listMonitors = db.prepare(`SELECT * FROM monitors WHERE active = 1 ORDER BY created_at DESC`);
-const getMonitor = db.prepare(`SELECT * FROM monitors WHERE id = ?`);
-const deleteMonitor = db.prepare(`UPDATE monitors SET active = 0 WHERE id = ?`);
-const getChecks = db.prepare(`SELECT * FROM checks WHERE monitor_id = ? ORDER BY checked_at DESC LIMIT ?`);
-const getIncidents = db.prepare(`SELECT * FROM incidents WHERE monitor_id = ? ORDER BY started_at DESC LIMIT ?`);
-
+const getMonitor         = db.prepare(`SELECT * FROM monitors WHERE id = ?`);
+const getMonitorsByKey   = db.prepare(`SELECT * FROM monitors WHERE key_hash = ? AND active = 1 ORDER BY created_at DESC`);
+const updateMonitorStatus = db.prepare(`UPDATE monitors SET status = ?, last_checked_at = datetime('now'), last_latency_ms = ? WHERE id = ?`);
+const softDelete         = db.prepare(`UPDATE monitors SET active = 0 WHERE id = ? AND key_hash = ?`);
+const updateMonitor      = db.prepare(`
+  UPDATE monitors SET name=@name, url=@url, interval_seconds=@interval_seconds, timeout_ms=@timeout_ms,
+    expect_status=@expect_status, expect_body=@expect_body, webhook_url=@webhook_url,
+    telegram_chat_id=@telegram_chat_id, public=@public
+  WHERE id=@id AND key_hash=@key_hash
+`);
+const getChecks          = db.prepare(`SELECT * FROM checks WHERE monitor_id = ? ORDER BY checked_at DESC LIMIT ?`);
+const getIncidents       = db.prepare(`SELECT * FROM incidents WHERE monitor_id = ? ORDER BY started_at DESC LIMIT ?`);
+const insertIncident     = db.prepare(`
+  INSERT INTO incidents (monitor_id, monitor_name, type, from_status, to_status, locations)
+  VALUES (?, ?, ?, ?, ?, ?)
+`);
 const insertCheck = db.prepare(`
-  INSERT INTO checks (monitor_id, location, up, status_code, latency_ms, ssl_valid, ssl_days_left, error)
-  VALUES (@monitor_id, @location, @up, @status_code, @latency_ms, @ssl_valid, @ssl_days_left, @error)
+  INSERT INTO checks (monitor_id, location, up, status_code, latency_ms, ssl_valid, ssl_days_left, block_number, is_stale, agent_name, mcp_tools_count, error)
+  VALUES (@monitor_id, @location, @up, @status_code, @latency_ms, @ssl_valid, @ssl_days_left, @block_number, @is_stale, @agent_name, @mcp_tools_count, @error)
 `);
 
-const updateMonitorStatus = db.prepare(`
-  UPDATE monitors SET status = ?, last_checked_at = datetime('now') WHERE id = ?
-`);
-
-const insertIncident = db.prepare(`
-  INSERT INTO incidents (monitor_id, type, from_status, to_status, locations)
-  VALUES (?, ?, ?, ?, ?)
-`);
-
-// --- Routes ---
+// ─────────────────────────────────────────────────────────────────────────────
+// Routes
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Health
-app.get('/health', (_req: Request, res: Response) => {
-  const monitorCount = db.prepare('SELECT COUNT(*) as count FROM monitors WHERE active = 1').get() as any;
-  const checkCount = db.prepare('SELECT COUNT(*) as count FROM checks').get() as any;
-  res.json({
-    status: 'ok',
-    version: '1.0.0',
-    monitors: monitorCount.count,
-    total_checks: checkCount.count,
-    uptime: process.uptime()
-  });
+app.get('/health', (_req, res) => {
+  const mc = db.prepare('SELECT COUNT(*) as c FROM monitors WHERE active = 1').get() as any;
+  const cc = db.prepare('SELECT COUNT(*) as c FROM checks').get() as any;
+  res.json({ status: 'ok', version: '2.0.0', monitors: mc.c, total_checks: cc.c, uptime: process.uptime() });
 });
 
-// Create monitor
-app.post('/v1/monitors', authenticate, (req: Request, res: Response) => {
-  const id = uuidv4();
-  const {
-    url, type = 'http', method = 'GET', interval_seconds = 300,
-    timeout_ms = 10000, expect_status = 200, expect_body = null,
-    locations = [], alert_channels = [], webhook_url = null,
-    alert_email = null, telegram_chat_id = null, name = null
-  } = req.body;
+// ── Public API: /api/ routes (used by website) ──────────────────────────────
 
-  if (!url) {
-    res.status(400).json({ error: 'url is required' });
+// POST /api/monitors — create monitor
+app.post('/api/monitors', authenticate, (req: Request, res: Response) => {
+  const keyHash  = (req as any).keyHash as string;
+  const limits   = getTierLimits(keyHash);
+
+  // Count existing monitors for this key
+  const count = (db.prepare('SELECT COUNT(*) as c FROM monitors WHERE key_hash = ? AND active = 1').get(keyHash) as any).c;
+  if (count >= limits.monitors) {
+    res.status(402).json({ error: `Monitor limit reached for your tier (${limits.monitors}). Upgrade to add more.` });
     return;
   }
 
+  const {
+    name, url, type = 'http', method = 'GET',
+    interval_seconds = 300, timeout_ms = 10000,
+    expect_status = 200, expect_body = null,
+    regions = [], webhook_url = null, telegram_chat_id = null,
+    public: isPublic = false
+  } = req.body;
+
+  if (!url) { res.status(400).json({ error: 'url is required' }); return; }
+
+  // Enforce minimum interval
+  const interval = Math.max(interval_seconds, limits.minInterval);
+
+  const id = uuidv4();
   try {
     insertMonitor.run({
-      id, url, type, method, interval_seconds, timeout_ms, expect_status,
-      expect_body, locations: JSON.stringify(locations),
-      alert_channels: JSON.stringify(alert_channels),
-      webhook_url, alert_email, telegram_chat_id,
-      api_key: req.headers['x-api-key'] || null, name
+      id, name: name || url, url, type, method,
+      interval_seconds: interval, timeout_ms,
+      expect_status, expect_body,
+      locations: JSON.stringify(regions.length ? regions : limits.regions),
+      webhook_url, telegram_chat_id,
+      key_hash: keyHash,
+      public: isPublic ? 1 : 0
     });
     const monitor = getMonitor.get(id);
     res.status(201).json(monitor);
@@ -153,27 +188,47 @@ app.post('/v1/monitors', authenticate, (req: Request, res: Response) => {
   }
 });
 
-// List monitors
-app.get('/v1/monitors', authenticate, (_req: Request, res: Response) => {
-  const monitors = listMonitors.all();
-  res.json({ monitors });
+// GET /api/monitors/:keyHash — list monitors for key
+app.get('/api/monitors/:keyHash', authenticate, (req: Request, res: Response) => {
+  const keyHash = (req as any).keyHash as string;
+  // Ensure the requester's key hash matches the requested keyHash
+  if (keyHash !== req.params.keyHash) {
+    res.status(403).json({ error: 'Forbidden' });
+    return;
+  }
+  const monitors = getMonitorsByKey.all(keyHash);
+  res.json(monitors);
 });
 
-// Get monitor
-app.get('/v1/monitors/:id', authenticate, (req: Request, res: Response) => {
-  const monitor = getMonitor.get(req.params.id) as any;
-  if (!monitor) {
+// PUT /api/monitors/:id — update monitor
+app.put('/api/monitors/:id', authenticate, (req: Request, res: Response) => {
+  const keyHash = (req as any).keyHash as string;
+  const existing = getMonitor.get(req.params.id) as any;
+  if (!existing || (existing as any).key_hash !== keyHash) {
     res.status(404).json({ error: 'Monitor not found' });
     return;
   }
-  const recentChecks = getChecks.all(req.params.id, 20);
-  const recentIncidents = getIncidents.all(req.params.id, 10);
-  res.json({ ...monitor, recent_checks: recentChecks, recent_incidents: recentIncidents });
+  const { name, url, interval_seconds, timeout_ms, expect_status, expect_body, webhook_url, telegram_chat_id, public: isPublic } = req.body;
+  updateMonitor.run({
+    id: req.params.id,
+    key_hash: keyHash,
+    name:             name             ?? existing.name,
+    url:              url              ?? existing.url,
+    interval_seconds: interval_seconds ?? existing.interval_seconds,
+    timeout_ms:       timeout_ms       ?? existing.timeout_ms,
+    expect_status:    expect_status    ?? existing.expect_status,
+    expect_body:      expect_body      ?? existing.expect_body,
+    webhook_url:      webhook_url      ?? existing.webhook_url,
+    telegram_chat_id: telegram_chat_id ?? existing.telegram_chat_id,
+    public:           isPublic != null ? (isPublic ? 1 : 0) : existing.public
+  });
+  res.json(getMonitor.get(req.params.id));
 });
 
-// Delete monitor
-app.delete('/v1/monitors/:id', authenticate, (req: Request, res: Response) => {
-  const result = deleteMonitor.run(req.params.id);
+// DELETE /api/monitors/:id — delete monitor
+app.delete('/api/monitors/:id', authenticate, (req: Request, res: Response) => {
+  const keyHash = (req as any).keyHash as string;
+  const result = softDelete.run(req.params.id, keyHash);
   if (result.changes === 0) {
     res.status(404).json({ error: 'Monitor not found' });
     return;
@@ -181,23 +236,91 @@ app.delete('/v1/monitors/:id', authenticate, (req: Request, res: Response) => {
   res.json({ deleted: true });
 });
 
-// Get checks for a monitor
-app.get('/v1/monitors/:id/checks', authenticate, (req: Request, res: Response) => {
-  const limit = Math.min(parseInt(req.query.limit as string) || 100, 1000);
-  const checks = getChecks.all(req.params.id, limit);
-  res.json({ checks });
+// GET /api/results/:monitorId — check results history
+app.get('/api/results/:monitorId', authenticate, (req: Request, res: Response) => {
+  const keyHash = (req as any).keyHash as string;
+  const monitor = getMonitor.get(req.params.monitorId) as any;
+  if (!monitor || monitor.key_hash !== keyHash) {
+    res.status(404).json({ error: 'Monitor not found' });
+    return;
+  }
+  const limit = Math.min(parseInt(req.query.limit as string || '100'), 1000);
+  const checks = getChecks.all(req.params.monitorId, limit);
+  res.json(checks);
 });
 
-// Get incidents for a monitor
-app.get('/v1/monitors/:id/incidents', authenticate, (req: Request, res: Response) => {
-  const limit = Math.min(parseInt(req.query.limit as string) || 50, 200);
-  const incidents = getIncidents.all(req.params.id, limit);
-  res.json({ incidents });
+// GET /api/status/:keyHash — public status page (no auth required)
+app.get('/api/status/:keyHash', (req: Request, res: Response) => {
+  const keyHash = req.params.keyHash;
+  const monitors = (db.prepare(`SELECT * FROM monitors WHERE key_hash = ? AND active = 1 AND public = 1`).all(keyHash)) as any[];
+
+  const now = new Date().toISOString();
+
+  const monitorData = monitors.map((m) => {
+    // 24h uptime
+    const allChecks = db.prepare(`
+      SELECT up, checked_at, latency_ms, location FROM checks
+      WHERE monitor_id = ? AND checked_at > datetime('now', '-24 hours')
+      ORDER BY checked_at ASC
+    `).all(m.id) as any[];
+
+    const upCount = allChecks.filter((c: any) => c.up).length;
+    const uptime24h = allChecks.length > 0 ? (upCount / allChecks.length) * 100 : null;
+
+    // Latest latency
+    const latest = allChecks[allChecks.length - 1];
+
+    // Build 45-slot uptime bar (each slot = ~32 minutes)
+    const slotMs = 24 * 60 * 60 * 1000 / 45;
+    const segments: boolean[] = [];
+    for (let i = 0; i < 45; i++) {
+      const slotStart = new Date(Date.now() - (45 - i) * slotMs);
+      const slotEnd   = new Date(Date.now() - (44 - i) * slotMs);
+      const slotChecks = allChecks.filter((c: any) => {
+        const t = new Date(c.checked_at).getTime();
+        return t >= slotStart.getTime() && t < slotEnd.getTime();
+      });
+      if (slotChecks.length === 0) continue; // skip empty slots
+      segments.push(slotChecks.some((c: any) => c.up));
+    }
+
+    return {
+      id:          m.id,
+      name:        m.name || m.url,
+      type:        m.type,
+      status:      m.status,
+      uptime_24h:  uptime24h,
+      latency_ms:  latest?.latency_ms || null,
+      segments
+    };
+  });
+
+  // Active incidents
+  const incidentRows = monitors.length > 0
+    ? db.prepare(`
+        SELECT i.*, m.name as monitor_name FROM incidents i
+        JOIN monitors m ON m.id = i.monitor_id
+        WHERE m.key_hash = ? AND i.resolved_at IS NULL
+        ORDER BY i.started_at DESC LIMIT 20
+      `).all(keyHash) as any[]
+    : [];
+
+  res.json({
+    checked_at: now,
+    regions: 2,
+    monitors: monitorData,
+    incidents: incidentRows
+  });
 });
 
-// --- Internal: Checker reports results ---
+// ── Internal: checker reports results ───────────────────────────────────────
+
 app.post('/v1/internal/check-result', (req: Request, res: Response) => {
-  const { monitor_id, location, up, status_code, latency_ms, ssl_valid, ssl_days_left, error } = req.body;
+  const {
+    monitor_id, location, up, status_code, latency_ms,
+    ssl_valid, ssl_days_left, error,
+    block_number = null, is_stale = null, agent_name = null, mcp_tools_count = null
+  } = req.body;
 
   if (!monitor_id || !location) {
     res.status(400).json({ error: 'monitor_id and location required' });
@@ -206,15 +329,20 @@ app.post('/v1/internal/check-result', (req: Request, res: Response) => {
 
   try {
     insertCheck.run({
-      monitor_id, location, up: up ? 1 : 0,
-      status_code: status_code || null,
-      latency_ms: latency_ms || null,
-      ssl_valid: ssl_valid != null ? (ssl_valid ? 1 : 0) : null,
-      ssl_days_left: ssl_days_left || null,
-      error: error || null
+      monitor_id, location,
+      up:             up ? 1 : 0,
+      status_code:    status_code    || null,
+      latency_ms:     latency_ms     || null,
+      ssl_valid:      ssl_valid  != null ? (ssl_valid ? 1 : 0) : null,
+      ssl_days_left:  ssl_days_left  || null,
+      block_number:   block_number   || null,
+      is_stale:       is_stale  != null ? (is_stale ? 1 : 0) : null,
+      agent_name:     agent_name     || null,
+      mcp_tools_count: mcp_tools_count || null,
+      error:          error          || null
     });
 
-    // Evaluate consensus and update status
+    // Consensus evaluation: get latest result per location in last 5 minutes
     const recentChecks = db.prepare(`
       SELECT location, up FROM checks
       WHERE monitor_id = ? AND checked_at > datetime('now', '-5 minutes')
@@ -223,18 +351,29 @@ app.post('/v1/internal/check-result', (req: Request, res: Response) => {
     `).all(monitor_id) as any[];
 
     if (recentChecks.length > 0) {
-      const downCount = recentChecks.filter((c: any) => !c.up).length;
-      const totalLocations = recentChecks.length;
-      const newStatus = downCount > totalLocations / 2 ? 'down' : 'up';
-      const monitor = getMonitor.get(monitor_id) as any;
+      const downCount    = recentChecks.filter((c: any) => !c.up).length;
+      const totalLocs    = recentChecks.length;
+      const majority     = Math.ceil((totalLocs + 1) / 2); // majority = >50%
+      const newStatus    = downCount >= majority ? 'down' : 'up';
+      const monitor      = getMonitor.get(monitor_id) as any;
 
-      if (monitor && monitor.status !== newStatus && monitor.status !== 'unknown') {
-        // State transition — create incident and fire alerts
-        const downLocations = recentChecks.filter((c: any) => !c.up).map((c: any) => c.location);
-        insertIncident.run(monitor_id, newStatus === 'down' ? 'outage' : 'recovery', monitor.status, newStatus, JSON.stringify(downLocations));
-        processAlerts(monitor, newStatus, downLocations);
+      if (monitor) {
+        if (monitor.status !== newStatus && monitor.status !== 'unknown') {
+          // State transition
+          const downLocs = recentChecks.filter((c: any) => !c.up).map((c: any) => c.location);
+          insertIncident.run(
+            monitor_id,
+            monitor.name || monitor.url,
+            newStatus === 'down' ? 'outage' : 'recovery',
+            monitor.status,
+            newStatus,
+            JSON.stringify(downLocs)
+          );
+          // Fire alerts
+          try { processAlerts(monitor, newStatus, downLocs); } catch {}
+        }
+        updateMonitorStatus.run(newStatus, latency_ms || null, monitor_id);
       }
-      updateMonitorStatus.run(newStatus, monitor_id);
     }
 
     res.json({ ok: true });
@@ -243,9 +382,8 @@ app.post('/v1/internal/check-result', (req: Request, res: Response) => {
   }
 });
 
-// --- Internal: Get due monitors for checker ---
+// Internal: due monitors for checker
 app.get('/v1/internal/due-monitors', (req: Request, res: Response) => {
-  const location = req.query.location as string || 'all';
   const monitors = db.prepare(`
     SELECT * FROM monitors
     WHERE active = 1
@@ -257,34 +395,11 @@ app.get('/v1/internal/due-monitors', (req: Request, res: Response) => {
   res.json({ monitors });
 });
 
-// --- Public status page API ---
-app.get('/v1/status/:id', (req: Request, res: Response) => {
-  const monitor = getMonitor.get(req.params.id) as any;
-  if (!monitor) {
-    res.status(404).json({ error: 'Not found' });
-    return;
-  }
-  const checks = getChecks.all(req.params.id, 100);
-  const incidents = getIncidents.all(req.params.id, 10);
-  // Return public-safe data only
-  res.json({
-    name: monitor.name || monitor.url,
-    status: monitor.status,
-    url: monitor.url,
-    last_checked_at: monitor.last_checked_at,
-    recent_checks: (checks as any[]).map((c: any) => ({
-      location: c.location,
-      up: !!c.up,
-      latency_ms: c.latency_ms,
-      checked_at: c.checked_at
-    })),
-    recent_incidents: incidents
-  });
-});
-
-// --- Start ---
+// ─────────────────────────────────────────────────────────────────────────────
+// Start
+// ─────────────────────────────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Watchdog API listening on :${PORT}`);
+  console.log(`PingDog API v2.0.0 listening on :${PORT}`);
   startScheduler(db);
 });
 

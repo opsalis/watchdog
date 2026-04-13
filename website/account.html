@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PingDog — Account</title>
+  <meta name="description" content="View your PingDog monitors, uptime stats, alert history, and manage your subscription.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://pingdog.net/account.html">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23f59e0b'/%3E%3Ccircle cx='16' cy='16' r='4' fill='%23fff'/%3E%3Ccircle cx='16' cy='16' r='8' stroke='%23fff' stroke-width='2' fill='none' opacity='.6'/%3E%3Ccircle cx='16' cy='16' r='12' stroke='%23fff' stroke-width='1.5' fill='none' opacity='.3'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"
+          integrity="sha512-6Srd0D9n+bZUHSnheZMu5jWf2S7rKqJHnIHXvoBhVzPSYnFe4Jmn1nGaHwOjLZmV9a7aBbJ1+JMRJHhFECfQ=="
+          crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --amber: #f59e0b;
+      --amber-dim: #d97706;
+      --amber-light: #fffbeb;
+      --text: #1a1a2e;
+      --text-secondary: #555770;
+      --bg: #ffffff;
+      --bg-alt: #f7f8fc;
+      --border: #e4e7ec;
+      --green: #10b981;
+      --red: #ef4444;
+      --radius: 10px;
+    }
+    body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.6; -webkit-font-smoothing: antialiased; }
+    code { font-family: 'JetBrains Mono', monospace; background: var(--bg-alt); border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.85em; }
+    a { color: var(--amber-dim); text-decoration: none; }
+    .container { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+    nav { background: rgba(255,255,255,0.95); backdrop-filter: blur(12px); border-bottom: 1px solid var(--border); padding: 16px 0; position: sticky; top: 0; z-index: 100; }
+    nav .inner { max-width: 760px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.2rem; letter-spacing: -0.5px; color: var(--text); text-decoration: none; }
+    .logo svg { width: 28px; height: 28px; }
+
+    .page-title { font-size: 1.75rem; font-weight: 700; margin: 40px 0 24px; }
+
+    .card { background: var(--bg-alt); border: 1px solid var(--border); border-radius: 12px; padding: 24px; margin-bottom: 20px; }
+    .card-title { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 600; }
+
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 16px; margin-bottom: 20px; }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; }
+    .stat-value.green { color: var(--green); }
+    .stat-value.amber { color: var(--amber-dim); }
+    .stat-value.red { color: var(--red); }
+    .stat-label { font-size: 0.8rem; color: var(--text-secondary); margin-top: 2px; }
+
+    .btn { display: inline-flex; align-items: center; padding: 10px 18px; border-radius: var(--radius); font-weight: 600; font-size: 0.85rem; cursor: pointer; border: none; transition: all 0.2s; gap: 8px; }
+    .btn-primary { background: var(--amber); color: #fff; }
+    .btn-primary:hover { background: var(--amber-dim); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-outline { border: 1px solid var(--border); color: var(--text-secondary); background: var(--bg); }
+    .btn-outline:hover { border-color: var(--amber); color: var(--amber-dim); }
+    .btn-danger { border: 1px solid var(--red); color: var(--red); background: var(--bg); }
+    .btn-danger:hover { background: #fef2f2; }
+    .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    .key-input-wrap { display: flex; gap: 8px; }
+    .key-input-wrap input { flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: var(--radius); font-family: 'JetBrains Mono', monospace; font-size: 0.9rem; outline: none; }
+    .key-input-wrap input:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245,158,11,0.12); }
+
+    #account-data { display: none; }
+
+    .alert { padding: 12px 16px; border-radius: 8px; font-size: 0.9rem; margin-bottom: 16px; }
+    .alert-info { background: var(--amber-light); border: 1px solid #fde68a; color: #92400e; }
+    .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .alert-warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .alert-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+
+    .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+    .badge-free { background: #f1f5f9; color: #475569; }
+    .badge-pro { background: var(--amber-light); color: var(--amber-dim); border: 1px solid #fde68a; }
+    .badge-business { background: #f5f3ff; color: #6d28d9; }
+    .badge-up { background: #f0fdf4; color: #166534; }
+    .badge-down { background: #fef2f2; color: #991b1b; }
+    .badge-unknown { background: #f8fafc; color: #94a3b8; }
+
+    .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(245,158,11,0.3); border-top-color: var(--amber); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th { text-align: left; padding: 10px 12px; font-weight: 600; color: var(--text-secondary); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid var(--border); }
+    td { padding: 12px 12px; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+    tr:last-child td { border-bottom: none; }
+
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+    .dot-green { background: var(--green); }
+    .dot-red { background: var(--red); }
+    .dot-grey { background: #94a3b8; }
+
+    .monitor-actions { display: flex; gap: 8px; }
+    .monitor-actions button { padding: 4px 10px; font-size: 0.75rem; }
+
+    .tier-select { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+    .tier-option { border: 2px solid var(--border); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+    .tier-option:hover { border-color: var(--amber); }
+    .tier-option.selected { border-color: var(--amber); background: var(--amber-light); }
+    .tier-option .tier-name { font-weight: 700; margin-bottom: 4px; }
+    .tier-option .tier-price { color: var(--amber-dim); font-size: 1.1rem; font-weight: 700; }
+    .tier-option .tier-desc { font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; }
+
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--bg); border-radius: 16px; padding: 32px; max-width: 480px; width: 100%; margin: 20px; }
+    .modal h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 16px; }
+    .modal-close { float: right; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-secondary); margin-top: -8px; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
+    .form-group input, .form-group select { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); font-size: 0.9rem; outline: none; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(245,158,11,0.12); }
+
+    footer { border-top: 1px solid var(--border); padding: 24px 0; margin-top: 48px; text-align: center; font-size: 0.8rem; color: #94a3b8; }
+  </style>
+</head>
+<body>
+
+  <!-- Subscribe Modal -->
+  <div class="modal-overlay" id="subscribe-modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('subscribe-modal')">&times;</button>
+      <h3>Upgrade subscription</h3>
+      <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:20px;">
+        Your wallet approves our billing contract. Funds stay in your wallet — we pull monthly. Revoke the approval to cancel instantly.
+      </p>
+      <div class="tier-select">
+        <div class="tier-option selected" id="opt-pro" onclick="selectTier(1)">
+          <div class="tier-name">Pro</div>
+          <div class="tier-price">$9.73/mo</div>
+          <div class="tier-desc">50 monitors · 1-min · 4 regions</div>
+        </div>
+        <div class="tier-option" id="opt-biz" onclick="selectTier(2)">
+          <div class="tier-name">Business</div>
+          <div class="tier-price">$47.21/mo</div>
+          <div class="tier-desc">500 monitors · 30s · 4 regions</div>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:0.85rem;font-weight:600;display:block;margin-bottom:8px;">Payment token</label>
+        <select id="token-select" style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:0.9rem;outline:none;">
+          <option value="usdc">USDC (Demo L2 — testing)</option>
+        </select>
+      </div>
+      <div id="modal-alert" style="display:none;" class="alert alert-info"></div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn btn-primary" id="subscribe-btn" onclick="doSubscribe()" style="flex:1;">Connect wallet &amp; subscribe</button>
+        <button class="btn btn-outline" onclick="closeModal('subscribe-modal')">Cancel</button>
+      </div>
+      <p style="font-size:0.75rem;color:var(--text-secondary);margin-top:12px;">
+        First month charged immediately. Monthly pulls thereafter. Cancel by revoking approval in your wallet.
+      </p>
+    </div>
+  </div>
+
+  <!-- Add Monitor Modal -->
+  <div class="modal-overlay" id="add-monitor-modal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal('add-monitor-modal')">&times;</button>
+      <h3>Add monitor</h3>
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="m-name" placeholder="My API">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="m-type" onchange="updateMonitorTypeUI()">
+          <option value="http">HTTP / HTTPS</option>
+          <option value="tcp">TCP Port</option>
+          <option value="dns">DNS</option>
+          <option value="ssl">SSL Certificate</option>
+          <option value="rpc">RPC Health</option>
+          <option value="a2a">A2A Agent</option>
+          <option value="mcp">MCP Server</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>URL / Endpoint</label>
+        <input type="text" id="m-url" placeholder="https://example.com">
+      </div>
+      <div class="form-group" id="m-interval-group">
+        <label>Check interval</label>
+        <select id="m-interval">
+          <option value="300">Every 5 minutes</option>
+          <option value="60">Every 1 minute (Pro+)</option>
+          <option value="30">Every 30 seconds (Business)</option>
+        </select>
+      </div>
+      <div id="m-http-extra" style="display:none;">
+        <div class="form-group">
+          <label>Expected status code</label>
+          <input type="number" id="m-status" value="200" min="100" max="599">
+        </div>
+        <div class="form-group">
+          <label>Body must contain (optional)</label>
+          <input type="text" id="m-body" placeholder="&quot;ok&quot;:true">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Webhook URL (optional)</label>
+        <input type="text" id="m-webhook" placeholder="https://hooks.slack.com/...">
+      </div>
+      <div class="form-group">
+        <label>Telegram chat ID (optional)</label>
+        <input type="text" id="m-telegram" placeholder="-100123456">
+      </div>
+      <div id="add-monitor-alert" style="display:none;" class="alert alert-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="submitAddMonitor()" style="flex:1;">Add monitor</button>
+        <button class="btn btn-outline" onclick="closeModal('add-monitor-modal')">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <nav>
+    <div class="inner">
+      <a href="/" class="logo">
+        <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+          <rect width="32" height="32" rx="6" fill="#f59e0b"/>
+          <circle cx="16" cy="16" r="4" fill="#fff"/>
+          <circle cx="16" cy="16" r="8" stroke="#fff" stroke-width="2" fill="none" opacity=".65"/>
+          <circle cx="16" cy="16" r="12" stroke="#fff" stroke-width="1.5" fill="none" opacity=".3"/>
+        </svg>
+        Ping<span style="color:var(--amber)">Dog</span>
+      </a>
+      <a href="/docs.html" style="font-size:0.9rem;color:var(--text-secondary);">Docs</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1 class="page-title">Account</h1>
+
+    <!-- Key input -->
+    <div class="card" id="key-form">
+      <div class="card-title">Your monitoring key</div>
+      <p style="margin-bottom:16px;color:var(--text-secondary);font-size:0.9rem;">Enter your <code>pdk_</code> key to view your monitors, uptime, alerts, and billing.</p>
+      <div class="key-input-wrap">
+        <input type="text" id="key-input" placeholder="pdk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" spellcheck="false" autocomplete="off">
+        <button class="btn btn-primary" id="load-btn" onclick="loadAccount()">Go</button>
+      </div>
+      <p style="margin-top:12px;font-size:0.8rem;color:var(--text-secondary);">Don't have a key? <a href="/">Get one free</a> — no email needed.</p>
+    </div>
+
+    <!-- Account data -->
+    <div id="account-data">
+
+      <div class="card">
+        <div class="card-title">Key</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:0.875rem;color:var(--text-secondary);word-break:break-all;" id="display-key"></div>
+        <div style="font-size:0.8rem;color:var(--text-secondary);margin-top:8px;">
+          Key hash: <code id="display-keyhash" style="font-size:0.75rem;"></code> &nbsp;&middot;&nbsp;
+          <a href="" id="status-page-link" target="_blank" style="font-size:0.8rem;">View public status page &rarr;</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Subscription</div>
+        <div id="subscription-loading" style="text-align:center;padding:20px;">
+          <div class="spinner"></div>
+          <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:8px;">Loading...</div>
+        </div>
+        <div id="subscription-content" style="display:none;">
+          <div class="stats-grid">
+            <div class="stat-item">
+              <div class="stat-value" id="tier-display">—</div>
+              <div class="stat-label">Tier</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value green" id="monitors-used">—</div>
+              <div class="stat-label">Monitors used</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="monitors-limit">—</div>
+              <div class="stat-label">Monitor limit</div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-value" id="allowance-display">—</div>
+              <div class="stat-label">USDC allowance</div>
+            </div>
+          </div>
+        </div>
+        <div id="subscription-error" style="display:none;" class="alert alert-warn"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Actions</div>
+        <div id="actions-free" class="btn-row" style="display:none;">
+          <button class="btn btn-primary" onclick="openModal('subscribe-modal')">Upgrade plan</button>
+          <button class="btn btn-outline" onclick="openModal('add-monitor-modal')">+ Add monitor</button>
+        </div>
+        <div id="actions-paid" class="btn-row" style="display:none;">
+          <button class="btn btn-outline" onclick="openModal('add-monitor-modal')">+ Add monitor</button>
+          <button class="btn btn-danger" onclick="showCancelInfo()">Cancel subscription</button>
+        </div>
+        <div id="cancel-info" style="display:none;margin-top:12px;" class="alert alert-info">
+          To cancel: open your wallet (MetaMask / Rabby), find the USDC approval for the PingDog billing contract, and set the allowance to 0. Your key reverts to the free tier immediately.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Monitors</div>
+        <div id="monitors-loading" style="text-align:center;padding:20px;">
+          <div class="spinner"></div>
+        </div>
+        <div id="monitors-content" style="display:none;">
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Type</th><th>Status</th><th>Uptime 24h</th><th>Latency</th><th></th></tr>
+            </thead>
+            <tbody id="monitors-table">
+              <tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-secondary);">No monitors yet. Add one above.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent incidents</div>
+        <div id="incidents-loading" style="text-align:center;padding:20px;"><div class="spinner"></div></div>
+        <div id="incidents-content" style="display:none;">
+          <table>
+            <thead>
+              <tr><th>Monitor</th><th>Started</th><th>Resolved</th><th>Duration</th></tr>
+            </thead>
+            <tbody id="incidents-table">
+              <tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-secondary);">No incidents. All systems green.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    PingDog &middot; <a href="/terms.html" style="color:#94a3b8;">Terms</a> &middot; <a href="/docs.html" style="color:#94a3b8;">Docs</a>
+  </footer>
+
+  <script>
+  // ── Config ────────────────────────────────────────────────────────────
+  var API_URL    = 'https://api.pingdog.net';
+  var CHAIN_ID   = 845302;   // Demo L2
+  var USDC_ADDR  = '0x75E9b48F4a8f8E10f6d46a7D582aC2bEc85B7d81';
+  var BILLING_ADDR = '0x0000000000000000000000000000000000000000'; // placeholder
+
+  var currentKey = null;
+  var currentKeyHash = null;
+  var selectedTier = 1;
+
+  // ── Helpers ──────────────────────────────────────────────────────────
+  async function sha256hex(str) {
+    var enc = new TextEncoder().encode(str);
+    var buf = await crypto.subtle.digest('SHA-256', enc);
+    return Array.from(new Uint8Array(buf)).map(function(b){ return b.toString(16).padStart(2,'0'); }).join('');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString();
+  }
+
+  function fmtDuration(startIso, endIso) {
+    if (!startIso) return '—';
+    var end = endIso ? new Date(endIso) : new Date();
+    var mins = Math.floor((end - new Date(startIso)) / 60000);
+    if (mins < 60) return mins + 'm';
+    return Math.floor(mins/60) + 'h ' + (mins%60) + 'm';
+  }
+
+  function statusDot(status) {
+    var cls = status === 'up' ? 'dot-green' : (status === 'down' ? 'dot-red' : 'dot-grey');
+    return '<span class="status-dot ' + cls + '"></span>';
+  }
+
+  function openModal(id) { document.getElementById(id).classList.add('open'); }
+  function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+  function showCancelInfo() { document.getElementById('cancel-info').style.display = document.getElementById('cancel-info').style.display === 'none' ? 'block' : 'none'; }
+
+  function selectTier(n) {
+    selectedTier = n;
+    document.getElementById('opt-pro').classList.toggle('selected', n === 1);
+    document.getElementById('opt-biz').classList.toggle('selected', n === 2);
+  }
+
+  function updateMonitorTypeUI() {
+    var t = document.getElementById('m-type').value;
+    document.getElementById('m-http-extra').style.display = t === 'http' ? 'block' : 'none';
+    var ph = { http:'https://example.com/health', tcp:'tcp://db.example.com:5432', dns:'https://example.com', ssl:'https://example.com', rpc:'https://mainnet.infura.io/v3/KEY', a2a:'https://agent.example.com', mcp:'wss://mcp.example.com/ws' };
+    document.getElementById('m-url').placeholder = ph[t] || 'https://...';
+  }
+
+  // ── Load account ─────────────────────────────────────────────────────
+  async function loadAccount() {
+    var k = document.getElementById('key-input').value.trim();
+    if (!k.startsWith('pdk_') || k.length < 20) {
+      alert('Please enter a valid pdk_ key.');
+      return;
+    }
+    currentKey = k;
+    currentKeyHash = await sha256hex(k);
+    currentKeyHash = currentKeyHash.substring(0, 16);
+
+    document.getElementById('key-form').style.display = 'none';
+    document.getElementById('account-data').style.display = 'block';
+    document.getElementById('display-key').textContent = k;
+    document.getElementById('display-keyhash').textContent = currentKeyHash;
+    document.getElementById('status-page-link').href = '/status.html?k=' + currentKeyHash;
+
+    try { localStorage.setItem('pingdog_key', k); } catch(e) {}
+
+    loadSubscription();
+    loadMonitors();
+  }
+
+  // Try restore key from localStorage
+  window.addEventListener('load', function() {
+    try {
+      var saved = localStorage.getItem('pingdog_key');
+      if (saved) document.getElementById('key-input').value = saved;
+    } catch(e) {}
+  });
+
+  document.getElementById('key-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') loadAccount();
+  });
+
+  // ── Subscription ──────────────────────────────────────────────────────
+  async function loadSubscription() {
+    document.getElementById('subscription-loading').style.display = 'block';
+    document.getElementById('subscription-content').style.display = 'none';
+    document.getElementById('subscription-error').style.display = 'none';
+
+    // For now, show free tier (backend returns tier info)
+    try {
+      var res = await fetch(API_URL + '/api/status/' + currentKeyHash, {
+        headers: { 'X-API-Key': currentKey }
+      });
+      // Regardless of response, show free UI as default
+    } catch(e) {}
+
+    // Show free tier defaults
+    document.getElementById('tier-display').textContent = 'Free';
+    document.getElementById('monitors-used').textContent = '0';
+    document.getElementById('monitors-limit').textContent = '3';
+    document.getElementById('allowance-display').textContent = '$0';
+
+    document.getElementById('subscription-loading').style.display = 'none';
+    document.getElementById('subscription-content').style.display = 'block';
+    document.getElementById('actions-free').style.display = 'flex';
+    document.getElementById('actions-paid').style.display = 'none';
+  }
+
+  // ── Monitors ──────────────────────────────────────────────────────────
+  async function loadMonitors() {
+    document.getElementById('monitors-loading').style.display = 'block';
+    document.getElementById('monitors-content').style.display = 'none';
+    document.getElementById('incidents-loading').style.display = 'block';
+    document.getElementById('incidents-content').style.display = 'none';
+
+    try {
+      var res = await fetch(API_URL + '/api/monitors/' + currentKeyHash, {
+        headers: { 'X-API-Key': currentKey }
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var monitors = await res.json();
+
+      var tbody = document.getElementById('monitors-table');
+      if (!monitors || monitors.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--text-secondary);">No monitors yet. Click "+ Add monitor" to create one.</td></tr>';
+      } else {
+        document.getElementById('monitors-used').textContent = monitors.length;
+        tbody.innerHTML = monitors.map(function(m) {
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(m.name || m.url) + '</strong><div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px;">' + escapeHtml(m.url) + '</div></td>' +
+            '<td><span class="badge badge-free">' + (m.type || 'http').toUpperCase() + '</span></td>' +
+            '<td>' + statusDot(m.status) + (m.status || 'unknown') + '</td>' +
+            '<td>—</td>' +
+            '<td>' + (m.last_latency_ms ? m.last_latency_ms + 'ms' : '—') + '</td>' +
+            '<td><div class="monitor-actions">' +
+            '<button class="btn btn-danger" onclick="deleteMonitor(\'' + m.id + '\')">Remove</button>' +
+            '</div></td>' +
+            '</tr>';
+        }).join('');
+      }
+    } catch(e) {
+      document.getElementById('monitors-table').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;">Could not load monitors: ' + e.message + '</td></tr>';
+    }
+
+    document.getElementById('monitors-loading').style.display = 'none';
+    document.getElementById('monitors-content').style.display = 'block';
+    document.getElementById('incidents-loading').style.display = 'none';
+    document.getElementById('incidents-content').style.display = 'block';
+  }
+
+  async function submitAddMonitor() {
+    var name = document.getElementById('m-name').value.trim();
+    var type = document.getElementById('m-type').value;
+    var url  = document.getElementById('m-url').value.trim();
+    var interval = parseInt(document.getElementById('m-interval').value);
+    var alertEl = document.getElementById('add-monitor-alert');
+    alertEl.style.display = 'none';
+
+    if (!name || !url) {
+      alertEl.textContent = 'Name and URL are required.';
+      alertEl.style.display = 'block';
+      return;
+    }
+
+    var body = { name: name, type: type, url: url, interval_seconds: interval };
+    if (type === 'http') {
+      body.expect_status = parseInt(document.getElementById('m-status').value) || 200;
+      var eb = document.getElementById('m-body').value.trim();
+      if (eb) body.expect_body = eb;
+    }
+    var wh = document.getElementById('m-webhook').value.trim();
+    if (wh) body.webhook_url = wh;
+    var tg = document.getElementById('m-telegram').value.trim();
+    if (tg) body.telegram_chat_id = tg;
+
+    try {
+      var res = await fetch(API_URL + '/api/monitors', {
+        method: 'POST',
+        headers: { 'X-API-Key': currentKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        var err = await res.json().catch(function(){ return { error: 'Request failed' }; });
+        throw new Error(err.error || 'Request failed');
+      }
+      closeModal('add-monitor-modal');
+      loadMonitors();
+    } catch(e) {
+      alertEl.textContent = 'Error: ' + e.message;
+      alertEl.style.display = 'block';
+    }
+  }
+
+  async function deleteMonitor(id) {
+    if (!confirm('Remove this monitor?')) return;
+    try {
+      await fetch(API_URL + '/api/monitors/' + id, {
+        method: 'DELETE',
+        headers: { 'X-API-Key': currentKey }
+      });
+      loadMonitors();
+    } catch(e) {
+      alert('Error: ' + e.message);
+    }
+  }
+
+  // ── Subscribe ─────────────────────────────────────────────────────────
+  async function doSubscribe() {
+    var btn = document.getElementById('subscribe-btn');
+    var alertEl = document.getElementById('modal-alert');
+    alertEl.style.display = 'none';
+
+    if (typeof window.ethereum === 'undefined') {
+      alertEl.textContent = 'No wallet detected. Install MetaMask or Rabby.';
+      alertEl.style.display = 'block';
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Connecting...';
+
+    try {
+      var provider = new ethers.BrowserProvider(window.ethereum);
+      await provider.send('eth_requestAccounts', []);
+      var network = await provider.getNetwork();
+      if (Number(network.chainId) !== CHAIN_ID) {
+        alertEl.textContent = 'Please switch to Demo L2 (chain ID ' + CHAIN_ID + ') in your wallet.';
+        alertEl.style.display = 'block';
+        btn.disabled = false;
+        btn.textContent = 'Connect wallet & subscribe';
+        return;
+      }
+
+      var signer = await provider.getSigner();
+      var amount = selectedTier === 1 ? '9730000' : '47210000'; // 6 decimals
+      var ERC20_ABI = ['function approve(address spender, uint256 amount) returns (bool)'];
+      var usdc = new ethers.Contract(USDC_ADDR, ERC20_ABI, signer);
+      var tx = await usdc.approve(BILLING_ADDR, amount);
+      btn.innerHTML = '<div class="spinner"></div> Confirming...';
+      await tx.wait();
+
+      alertEl.className = 'alert alert-success';
+      alertEl.textContent = 'Approval confirmed. Your tier is now active within a few minutes.';
+      alertEl.style.display = 'block';
+      btn.textContent = 'Done';
+
+    } catch(e) {
+      alertEl.className = 'alert alert-error';
+      alertEl.textContent = e.message || 'Transaction failed.';
+      alertEl.style.display = 'block';
+      btn.disabled = false;
+      btn.textContent = 'Connect wallet & subscribe';
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  </script>
+
+</body>
+</html>

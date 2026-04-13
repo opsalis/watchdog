@@ -1,0 +1,20 @@
+{
+  "name": "PingDog — Uptime Monitoring",
+  "short_name": "PingDog",
+  "description": "Monitor your APIs, RPCs, and AI agents from 4 continents.",
+  "start_url": "/account.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='32' fill='%23f59e0b'/%3E%3Ccircle cx='96' cy='96' r='24' fill='%23fff'/%3E%3Ccircle cx='96' cy='96' r='48' stroke='%23fff' stroke-width='10' fill='none' opacity='.65'/%3E%3Ccircle cx='96' cy='96' r='72' stroke='%23fff' stroke-width='8' fill='none' opacity='.3'/%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "developer tools"],
+  "screenshots": []
+}
