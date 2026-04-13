@@ -73,15 +73,17 @@ async function checkHttp(monitor: Monitor): Promise<CheckResult> {
         let sslValid: boolean | null = null;
         let sslDaysLeft: number | null = null;
         if (url.protocol === 'https:') {
-          const socket = (res.socket as any);
-          if (socket.getPeerCertificate) {
-            const cert = socket.getPeerCertificate();
-            if (cert && cert.valid_to) {
-              const expiry = new Date(cert.valid_to);
-              sslDaysLeft = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-              sslValid = socket.authorized !== false && sslDaysLeft > 0;
+          try {
+            const socket = (res.socket as any);
+            if (socket != null && typeof socket.getPeerCertificate === 'function') {
+              const cert = socket.getPeerCertificate();
+              if (cert && cert.valid_to) {
+                const expiry = new Date(cert.valid_to);
+                sslDaysLeft = Math.floor((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                sslValid = socket.authorized !== false && sslDaysLeft > 0;
+              }
             }
-          }
+          } catch { /* ignore SSL inspection errors */ }
         }
 
         resolve({
