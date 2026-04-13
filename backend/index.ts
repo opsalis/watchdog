@@ -1,7 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import path from 'path';
 import fs from 'fs';
 import { startScheduler } from './scheduler';
@@ -140,10 +140,23 @@ const insertCheck = db.prepare(`
 app.get('/health', (_req, res) => {
   const mc = db.prepare('SELECT COUNT(*) as c FROM monitors WHERE active = 1').get() as any;
   const cc = db.prepare('SELECT COUNT(*) as c FROM checks').get() as any;
-  res.json({ status: 'ok', version: '2.0.0', monitors: mc.c, total_checks: cc.c, uptime: process.uptime() });
+  res.json({ status: 'ok', version: '2.1.0', monitors: mc.c, total_checks: cc.c, uptime: process.uptime() });
 });
 
 // ── Public API: /api/ routes (used by website) ──────────────────────────────
+
+// POST /api/generate-key — generate a new pdk_ key (client-side is preferred,
+// but backend endpoint allows testing and future server-side flows)
+app.post('/api/generate-key', (_req: Request, res: Response) => {
+  const hex = randomBytes(32).toString('hex');
+  const key = `pdk_${hex}`;
+  const keyHash = createHash('sha256').update(key).digest('hex').substring(0, 16);
+  res.json({
+    key,
+    keyHash,
+    message: 'Save your key — it will not be shown again.',
+  });
+});
 
 // POST /api/monitors — create monitor
 app.post('/api/monitors', authenticate, (req: Request, res: Response) => {
