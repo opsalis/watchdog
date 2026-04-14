@@ -74,6 +74,10 @@
 
     .notice { background: var(--amber-light); border: 1px solid #fde68a; border-radius: 8px; padding: 14px 18px; font-size: 0.9rem; color: #92400e; margin: 20px 0; }
 
+    .btn-demo { background: var(--amber); color: #fff; border: none; border-radius: 6px; padding: 8px 18px; font-size: 0.875rem; font-weight: 600; cursor: pointer; font-family: inherit; }
+    .btn-demo:hover { background: var(--amber-dim); }
+    .demo-result { margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; font-family: 'JetBrains Mono', monospace; word-break: break-all; }
+
     footer { border-top: 1px solid var(--border); padding: 32px 0; margin-top: 64px; text-align: center; font-size: 0.8rem; color: #94a3b8; }
   </style>
 </head>
@@ -94,7 +98,6 @@
         <a href="/">Home</a>
         <a href="/docs.html" class="active">Docs</a>
         <a href="/account.html">Account</a>
-        <a href="/terms.html">Terms</a>
       </div>
     </div>
   </nav>
@@ -339,7 +342,82 @@ print(resp.json())</code></pre>
     <pre><code>curl https://api.pingdog.net/api/monitors/YOUR_KEY_HASH \
   -H <span class="str">"X-API-Key: pdk_YOUR_KEY"</span> | jq .</code></pre>
 
+    <h2 id="live-demos">Live demos</h2>
+    <p>Click "Run demo" to fire a real one-off check against the PingDog backend. Results appear inline — no key needed.</p>
+
+    <div class="endpoint-block" id="demo-http-block">
+      <div class="endpoint-title">HTTP uptime — google.com</div>
+      <div class="endpoint-desc" style="margin-bottom:12px;">Checks that google.com returns HTTP 200 in under 2 seconds.</div>
+      <pre style="margin-bottom:12px;"><code>{
+  <span class="str">"type"</span>: <span class="str">"http"</span>,
+  <span class="str">"url"</span>:  <span class="str">"https://www.google.com"</span>,
+  <span class="str">"expect_status"</span>: <span class="num">200</span>
+}</code></pre>
+      <button onclick="runDemo('http','https://www.google.com','demo-http-result')" class="btn-demo">Run demo</button>
+      <div id="demo-http-result" class="demo-result" style="display:none;"></div>
+    </div>
+
+    <div class="endpoint-block" id="demo-dns-block">
+      <div class="endpoint-title">DNS resolution — cloudflare.com</div>
+      <div class="endpoint-desc" style="margin-bottom:12px;">Resolves cloudflare.com and returns the answer IPs and resolution time.</div>
+      <pre style="margin-bottom:12px;"><code>{
+  <span class="str">"type"</span>: <span class="str">"dns"</span>,
+  <span class="str">"url"</span>:  <span class="str">"https://cloudflare.com"</span>
+}</code></pre>
+      <button onclick="runDemo('dns','https://cloudflare.com','demo-dns-result')" class="btn-demo">Run demo</button>
+      <div id="demo-dns-result" class="demo-result" style="display:none;"></div>
+    </div>
+
+    <div class="endpoint-block" id="demo-rpc-block">
+      <div class="endpoint-title">RPC block height — OpsalisChain L1</div>
+      <div class="endpoint-desc" style="margin-bottom:12px;">Calls <code>eth_blockNumber</code> on the OpsalisChain L1 RPC and checks that a block is being produced.</div>
+      <pre style="margin-bottom:12px;"><code>{
+  <span class="str">"type"</span>: <span class="str">"rpc"</span>,
+  <span class="str">"url"</span>:  <span class="str">"https://rpc.opsalis.com"</span>
+}</code></pre>
+      <button onclick="runDemo('rpc','https://rpc.opsalis.com','demo-rpc-result')" class="btn-demo">Run demo</button>
+      <div id="demo-rpc-result" class="demo-result" style="display:none;"></div>
+    </div>
+
   </div>
+
+  <script>
+  var DEMO_KEY = 'pdk_demo0000000000000000000000000000000000000000000000000000000000';
+
+  function runDemo(type, url, resultId) {
+    var el = document.getElementById(resultId);
+    el.style.display = 'block';
+    el.style.color = '#92400e';
+    el.style.background = '#fffbeb';
+    el.textContent = 'Running check…';
+
+    fetch('https://api.pingdog.net/api/check', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-API-Key': DEMO_KEY },
+      body: JSON.stringify({ type: type, url: url })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var up = data.status === 'up' || data.up === true;
+      el.style.color = up ? '#166534' : '#991b1b';
+      el.style.background = up ? '#f0fdf4' : '#fef2f2';
+      var lines = [];
+      if (data.status) lines.push('status: ' + data.status);
+      if (data.latency_ms != null) lines.push('latency: ' + data.latency_ms + ' ms');
+      if (data.resolved_ips) lines.push('IPs: ' + data.resolved_ips.join(', '));
+      if (data.block_number) lines.push('block: ' + data.block_number);
+      if (data.is_stale != null) lines.push('stale: ' + data.is_stale);
+      if (data.error) lines.push('error: ' + data.error);
+      if (data.message) lines.push(data.message);
+      el.textContent = lines.length ? lines.join(' · ') : JSON.stringify(data);
+    })
+    .catch(function(err) {
+      el.style.color = '#991b1b';
+      el.style.background = '#fef2f2';
+      el.textContent = 'Request failed: ' + err.message;
+    });
+  }
+  </script>
 
   <footer>
     <a href="/" style="color:#94a3b8;">PingDog</a> &middot;
