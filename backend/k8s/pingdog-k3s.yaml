@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pingdog
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pingdog-data
+  namespace: pingdog
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 2Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pingdog-api
+  namespace: pingdog
+  labels: { app: pingdog, component: api }
+  annotations:
+    keel.sh/policy: "force"
+    keel.sh/trigger: "poll"
+    keel.sh/pollSchedule: "@every 2m"
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: pingdog, component: api }
+  template:
+    metadata:
+      labels: { app: pingdog, component: api }
+    spec:
+      containers:
+      - name: api
+        image: sertonenet/pingdog-api:latest
+        imagePullPolicy: Always
+        ports:
+        - { containerPort: 3300, name: http }
+        env:
+        - { name: PORT,          value: "3300" }
+        - { name: DB_PATH,       value: "/app/data/pingdog.db" }
+        - { name: L2_RPC_URL,    value: "http://l2-rpc.opsalis-l2-demo.svc.cluster.local:8545" }
+        - { name: L2_CHAIN_ID,   value: "845312" }
+        - { name: BILLING_CONTRACT, value: "0xCEfD64724E6EAbD3372188d3b558b1e74dD27Bc6" }
+        - { name: USDC_CONTRACT, value: "0xb081d16D40e4e4c27D6d8564d145Ab2933037111" }
+        - name: ADMIN_KEY
+          valueFrom:
+            secretKeyRef:
+              name: pingdog-secrets
+              key: admin-key
+              optional: true
+        volumeMounts:
+        - { name: data, mountPath: /app/data }
+        resources:
+          requests: { cpu: 100m, memory: 128Mi }
+          limits:   { cpu: 500m, memory: 512Mi }
+        livenessProbe:
+          httpGet: { path: /health, port: 3300 }
+          initialDelaySeconds: 10
+          periodSeconds: 20
+        readinessProbe:
+          httpGet: { path: /health, port: 3300 }
+          initialDelaySeconds: 3
+          periodSeconds: 10
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: pingdog-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pingdog-api
+  namespace: pingdog
+  labels: { app: pingdog, component: api }
+spec:
+  type: ClusterIP
+  ports:
+  - { name: http, port: 3300, targetPort: 3300, protocol: TCP }
+  selector: { app: pingdog, component: api }
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: pingdog-api
+  namespace: pingdog
+  annotations:
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "true"
+    external-dns.alpha.kubernetes.io/hostname: api.pingdog.net
+spec:
+  entryPoints: [web, websecure]
+  routes:
+  - kind: Rule
+    match: Host(`api.pingdog.net`)
+    services:
+    - name: pingdog-api
+      port: 3300
+---
+# Billing renewal sweep — daily at 04:00 UTC. Hits the in-cluster API.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pingdog-billing
+  namespace: pingdog
+spec:
+  schedule: "0 4 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: renew
+            image: curlimages/curl:latest
+            env:
+            - name: ADMIN_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: pingdog-secrets
+                  key: admin-key
+            command:
+            - sh
+            - -c
+            - |
+              set -e
+              curl -fsS -X POST \
+                -H "X-Admin-Key: $ADMIN_KEY" \
+                http://pingdog-api.pingdog.svc.cluster.local:3300/admin/billing/run-renewal

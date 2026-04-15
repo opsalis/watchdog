@@ -1,0 +1,10 @@
+{
+  "chainId": 845312,
+  "rpcUrl": "http://192.99.9.106:30846",
+  "address": "0xCEfD64724E6EAbD3372188d3b558b1e74dD27Bc6",
+  "deployTx": "0x5220c6962403680fb2e8035e0830d6d8c743ed431b9b93e5ff4ea8a22f80b29f",
+  "usdc": "0xb081d16D40e4e4c27D6d8564d145Ab2933037111",
+  "serviceIdPingDog": "0x37ffaa2b2c989d4f5e81008635b8c5e2606408afe8892db6cd92ffd6ce727491",
+  "pingdogRevenueWallet": "0x1939E5a03f2d023b26aC54f0F66AAD536031aFCc",
+  "deployedAt": "2026-04-15T23:45:32.046Z"
+}

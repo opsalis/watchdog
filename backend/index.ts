@@ -6,6 +6,18 @@ import path from 'path';
 import fs from 'fs';
 import { startScheduler } from './scheduler';
 import { processAlerts } from './alerting';
+import {
+  initBillingSchema,
+  getSubscription,
+  getTierLimits as billingTierLimits,
+  applyUpgrade,
+  cancelSubscription,
+  verifyPaymentTx,
+  renewalSweep,
+  startRenewalCron,
+  TIER_LIMITS,
+  type Tier,
+} from './billing';
 
 const app = express();
 app.use(express.json());
@@ -99,10 +111,11 @@ function authenticate(req: Request, res: Response, next: NextFunction): void {
   next();
 }
 
-// --- Tier limits (extend when billing goes live) ---
-function getTierLimits(_keyHash: string): { monitors: number; minInterval: number; regions: string[] } {
-  // All free for now. Billing contract integration will update this.
-  return { monitors: 3, minInterval: 300, regions: ['ca', 'de'] };
+// --- Tier limits — backed by subscriptions table (see billing.ts) ---
+initBillingSchema(db);
+
+function getTierLimits(keyHash: string): { monitors: number; minInterval: number; regions: readonly string[] } {
+  return billingTierLimits(db, keyHash);
 }
 
 // --- Prepared Statements ---
@@ -189,7 +202,7 @@ app.post('/api/monitors', authenticate, (req: Request, res: Response) => {
       id, name: name || url, url, type, method,
       interval_seconds: interval, timeout_ms,
       expect_status, expect_body,
-      locations: JSON.stringify(regions.length ? regions : limits.regions),
+      locations: JSON.stringify(regions.length ? regions : [...limits.regions]),
       webhook_url, telegram_chat_id,
       key_hash: keyHash,
       public: isPublic ? 1 : 0
@@ -395,6 +408,94 @@ app.post('/v1/internal/check-result', (req: Request, res: Response) => {
   }
 });
 
+// ── Subscription / billing routes ───────────────────────────────────────────
+
+// Simple per-IP rate limiter (in-memory, 20 req/min per IP)
+const rateBuckets = new Map<string, { count: number; resetAt: number }>();
+function rateLimited(req: Request, limit = 20, windowMs = 60_000): boolean {
+  const ip = (req.headers['x-forwarded-for'] as string || req.socket.remoteAddress || 'unknown').split(',')[0].trim();
+  const now = Date.now();
+  const b = rateBuckets.get(ip);
+  if (!b || b.resetAt < now) { rateBuckets.set(ip, { count: 1, resetAt: now + windowMs }); return false; }
+  b.count++;
+  return b.count > limit;
+}
+
+// GET /api/subscription/:keyHash
+app.get('/api/subscription/:keyHash', (req: Request, res: Response) => {
+  if (rateLimited(req)) { res.status(429).json({ error: 'rate limit' }); return; }
+  const keyHash = String(req.params.keyHash);
+  const sub = getSubscription(db, keyHash);
+  const limits = getTierLimits(keyHash);
+  if (!sub) {
+    res.json({ keyHash, tier: 'free', status: 'active', next_renewal_at: null, limits });
+    return;
+  }
+  res.json({
+    keyHash,
+    tier: sub.tier,
+    status: sub.status,
+    started_at: sub.started_at,
+    next_renewal_at: sub.next_renewal_at,
+    customer_wallet: sub.customer_wallet,
+    limits,
+  });
+});
+
+// POST /api/upgrade  body { keyHash, tier, txHash }
+app.post('/api/upgrade', async (req: Request, res: Response) => {
+  if (rateLimited(req, 10, 60_000)) { res.status(429).json({ error: 'rate limit' }); return; }
+  const { keyHash, tier, txHash } = req.body || {};
+  if (!keyHash || typeof keyHash !== 'string' || keyHash.length < 8) {
+    res.status(400).json({ error: 'keyHash required' }); return;
+  }
+  if (tier !== 'pro' && tier !== 'business') {
+    res.status(400).json({ error: 'tier must be pro or business' }); return;
+  }
+  if (!txHash || typeof txHash !== 'string' || !/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
+    res.status(400).json({ error: 'txHash required (0x… 66 chars)' }); return;
+  }
+
+  try {
+    const v = await verifyPaymentTx(txHash, tier as Tier, keyHash);
+    if (!v.ok) { res.status(402).json({ error: `payment verification failed: ${v.error}` }); return; }
+    const sub = applyUpgrade(db, {
+      keyHash, tier: tier as Tier, txHash,
+      customerWallet: v.customerWallet!, amount: v.amount!,
+    });
+    res.json({ ok: true, subscription: sub, limits: getTierLimits(keyHash) });
+  } catch (e: any) {
+    if (String(e.message).startsWith('payment_replay')) {
+      res.status(409).json({ error: e.message }); return;
+    }
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/cancel  body { keyHash }
+app.post('/api/cancel', (req: Request, res: Response) => {
+  if (rateLimited(req, 10, 60_000)) { res.status(429).json({ error: 'rate limit' }); return; }
+  const { keyHash } = req.body || {};
+  if (!keyHash || typeof keyHash !== 'string') { res.status(400).json({ error: 'keyHash required' }); return; }
+  const sub = cancelSubscription(db, keyHash);
+  if (!sub) { res.status(404).json({ error: 'no active subscription' }); return; }
+  res.json({ ok: true, subscription: sub });
+});
+
+// POST /admin/billing/run-renewal — admin trigger for cron (for tests + ops)
+app.post('/admin/billing/run-renewal', (req: Request, res: Response) => {
+  const adminKey = process.env.ADMIN_KEY;
+  if (!adminKey || req.headers['x-admin-key'] !== adminKey) {
+    res.status(403).json({ error: 'forbidden' }); return;
+  }
+  try {
+    const r = renewalSweep(db);
+    res.json({ ok: true, ...r });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Internal: due monitors for checker
 app.get('/v1/internal/due-monitors', (req: Request, res: Response) => {
   const monitors = db.prepare(`
@@ -412,8 +513,10 @@ app.get('/v1/internal/due-monitors', (req: Request, res: Response) => {
 // Start
 // ─────────────────────────────────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`PingDog API v2.0.0 listening on :${PORT}`);
+  console.log(`PingDog API v2.1.0 listening on :${PORT}`);
+  console.log(`Billing: tier limits free=${TIER_LIMITS.free.monitors} pro=${TIER_LIMITS.pro.monitors} business=${TIER_LIMITS.business.monitors}`);
   startScheduler(db);
+  startRenewalCron(db);
 });
 
 export { db, app };

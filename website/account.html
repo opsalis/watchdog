@@ -296,10 +296,10 @@
         </div>
         <div id="actions-paid" class="btn-row" style="display:none;">
           <button class="btn btn-outline" onclick="openModal('add-monitor-modal')">+ Add monitor</button>
-          <button class="btn btn-danger" onclick="showCancelInfo()">Cancel subscription</button>
+          <button class="btn btn-danger" onclick="doCancel()">Cancel subscription</button>
         </div>
         <div id="cancel-info" style="display:none;margin-top:12px;" class="alert alert-info">
-          To cancel: open your wallet (MetaMask / Rabby), find the USDC approval for the PingDog billing contract, and set the allowance to 0. Your key reverts to the free tier immediately.
+          Canceling keeps your tier active until the renewal date, then drops you to Free. No refunds.
         </div>
       </div>
 
@@ -344,10 +344,12 @@
 
   <script>
   // ── Config ────────────────────────────────────────────────────────────
-  var API_URL    = 'https://api.pingdog.net';
-  var CHAIN_ID   = 845302;   // Demo L2
-  var USDC_ADDR  = '0x75E9b48F4a8f8E10f6d46a7D582aC2bEc85B7d81';
-  var BILLING_ADDR = '0xC0ee43C5cc0b2F69D4e5AEa3a17D9A333e819DF8'; // PingDog Billing on Demo L2 (845302)
+  var API_URL      = 'https://api.pingdog.net';
+  var CHAIN_ID     = 845312;   // Demo L2
+  var USDC_ADDR    = '0xb081d16D40e4e4c27D6d8564d145Ab2933037111';
+  var BILLING_ADDR = '0xCEfD64724E6EAbD3372188d3b558b1e74dD27Bc6';
+  // keccak256("pingdog")
+  var SERVICE_ID   = '0x37ffaa2b2c989d4f5e81008635b8c5e2606408afe8892db6cd92ffd6ce727491';
 
   var currentKey = null;
   var currentKeyHash = null;
@@ -436,24 +438,48 @@
     document.getElementById('subscription-content').style.display = 'none';
     document.getElementById('subscription-error').style.display = 'none';
 
-    // For now, show free tier (backend returns tier info)
+    var tier = 'free', status = 'active', renewal = null, limits = { monitors: 5 };
     try {
-      var res = await fetch(API_URL + '/api/status/' + currentKeyHash, {
-        headers: { 'X-API-Key': currentKey }
-      });
-      // Regardless of response, show free UI as default
+      var res = await fetch(API_URL + '/api/subscription/' + currentKeyHash);
+      if (res.ok) {
+        var sub = await res.json();
+        tier    = sub.tier    || 'free';
+        status  = sub.status  || 'active';
+        renewal = sub.next_renewal_at || null;
+        limits  = sub.limits  || limits;
+      }
     } catch(e) {}
 
-    // Show free tier defaults
-    document.getElementById('tier-display').textContent = 'Free';
-    document.getElementById('monitors-used').textContent = '0';
-    document.getElementById('monitors-limit').textContent = '3';
-    document.getElementById('allowance-display').textContent = '$0';
+    var label = tier.charAt(0).toUpperCase() + tier.slice(1);
+    if (status === 'canceled') label += ' (canceled, active until ' + (renewal || '—') + ')';
+    else if (status === 'grace') label += ' (grace period until ' + (renewal || '—') + ')';
+    else if (status === 'expired') label = 'Free';
+    document.getElementById('tier-display').textContent = label;
+    document.getElementById('monitors-limit').textContent = String(limits.monitors);
+    document.getElementById('allowance-display').textContent = renewal ? ('Renews ' + renewal) : '—';
 
     document.getElementById('subscription-loading').style.display = 'none';
     document.getElementById('subscription-content').style.display = 'block';
-    document.getElementById('actions-free').style.display = 'flex';
-    document.getElementById('actions-paid').style.display = 'none';
+    var paid = (tier !== 'free' && status !== 'expired');
+    document.getElementById('actions-free').style.display = paid ? 'none' : 'flex';
+    document.getElementById('actions-paid').style.display = paid ? 'flex' : 'none';
+  }
+
+  async function doCancel() {
+    if (!confirm('Cancel subscription? Your current tier stays active until the renewal date, then downgrades to Free.')) return;
+    try {
+      var res = await fetch(API_URL + '/api/cancel', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyHash: currentKeyHash })
+      });
+      var data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Cancel failed');
+      await loadSubscription();
+      alert('Subscription canceled. It will remain active until ' + (data.subscription && data.subscription.next_renewal_at) + '.');
+    } catch(e) {
+      alert('Cancel failed: ' + e.message);
+    }
   }
 
   // ── Monitors ──────────────────────────────────────────────────────────
@@ -582,17 +608,42 @@
       }
 
       var signer = await provider.getSigner();
+      var tierName = selectedTier === 1 ? 'pro' : 'business';
       var amount = selectedTier === 1 ? '9730000' : '47210000'; // 6 decimals
-      var ERC20_ABI = ['function approve(address spender, uint256 amount) returns (bool)'];
-      var usdc = new ethers.Contract(USDC_ADDR, ERC20_ABI, signer);
-      var tx = await usdc.approve(BILLING_ADDR, amount);
-      btn.innerHTML = '<div class="spinner"></div> Confirming...';
-      await tx.wait();
+      var productId = ethers.id(tierName + '-monthly');
+
+      var ERC20_ABI   = ['function approve(address,uint256) returns (bool)','function allowance(address,address) view returns (uint256)'];
+      var BILLING_ABI = ['function pay(bytes32,bytes32,uint256) external'];
+
+      var usdc    = new ethers.Contract(USDC_ADDR,    ERC20_ABI,   signer);
+      var billing = new ethers.Contract(BILLING_ADDR, BILLING_ABI, signer);
+
+      var owner = await signer.getAddress();
+      var cur   = await usdc.allowance(owner, BILLING_ADDR);
+      if (cur < BigInt(amount)) {
+        btn.innerHTML = '<div class="spinner"></div> Approving USDC...';
+        var atx = await usdc.approve(BILLING_ADDR, amount);
+        await atx.wait();
+      }
+
+      btn.innerHTML = '<div class="spinner"></div> Paying on-chain...';
+      var ptx = await billing.pay(SERVICE_ID, productId, amount);
+      await ptx.wait();
+
+      btn.innerHTML = '<div class="spinner"></div> Activating tier...';
+      var up = await fetch(API_URL + '/api/upgrade', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyHash: currentKeyHash, tier: tierName, txHash: ptx.hash })
+      });
+      var upJson = await up.json();
+      if (!up.ok) throw new Error(upJson.error || 'Upgrade failed');
 
       alertEl.className = 'alert alert-success';
-      alertEl.textContent = 'Approval confirmed. Your tier is now active within a few minutes.';
+      alertEl.textContent = 'Payment confirmed. Tier: ' + tierName + '. Monitor limit: ' + upJson.limits.monitors + '.';
       alertEl.style.display = 'block';
       btn.textContent = 'Done';
+      setTimeout(function(){ closeModal('subscribe-modal'); loadSubscription(); }, 1500);
 
     } catch(e) {
       alertEl.className = 'alert alert-error';
