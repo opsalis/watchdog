@@ -343,79 +343,101 @@ print(resp.json())</code></pre>
   -H <span class="str">"X-API-Key: pdk_YOUR_KEY"</span> | jq .</code></pre>
 
     <h2 id="live-demos">Live demos</h2>
-    <p>Click "Run demo" to fire a real one-off check against the PingDog backend. Results appear inline — no key needed.</p>
+    <p>Click "Run demo" to fire a real check from <em>your browser</em> against the target host. Latency is measured end-to-end (DNS + TCP + TLS + HTTP round-trip). No key needed. These demos illustrate what PingDog does — the full service runs the same checks from 4 continents on a schedule and alerts you on consensus.</p>
+    <p class="notice">Browser CORS restrictions mean the browser cannot read the response body of cross-origin hosts, only timing. PingDog's backend workers have no such restriction and collect full status codes, response bodies, and headers.</p>
 
-    <div class="endpoint-block" id="demo-http-block">
-      <div class="endpoint-title">HTTP uptime — google.com</div>
-      <div class="endpoint-desc" style="margin-bottom:12px;">Checks that google.com returns HTTP 200 in under 2 seconds.</div>
-      <pre style="margin-bottom:12px;"><code>{
-  <span class="str">"type"</span>: <span class="str">"http"</span>,
-  <span class="str">"url"</span>:  <span class="str">"https://www.google.com"</span>,
-  <span class="str">"expect_status"</span>: <span class="num">200</span>
-}</code></pre>
-      <button onclick="runDemo('http','https://www.google.com','demo-http-result')" class="btn-demo">Run demo</button>
-      <div id="demo-http-result" class="demo-result" style="display:none;"></div>
+    <div class="endpoint-block" id="demo-google-block">
+      <div class="endpoint-title">Demo 1 — Ping <code>google.com</code></div>
+      <div class="endpoint-desc" style="margin-bottom:12px;">HTTPS reachability + latency to Google's front page.</div>
+      <pre style="margin-bottom:12px;"><code>curl -o /dev/null -s -w <span class="str">"status=%{http_code} latency=%{time_total}s\n"</span> \
+     https://www.google.com</code></pre>
+      <button onclick="runBrowserPing('https://www.google.com','demo-google-result')" class="btn-demo">Run demo</button>
+      <div id="demo-google-result" class="demo-result" style="display:none;"></div>
     </div>
 
-    <div class="endpoint-block" id="demo-dns-block">
-      <div class="endpoint-title">DNS resolution — cloudflare.com</div>
-      <div class="endpoint-desc" style="margin-bottom:12px;">Resolves cloudflare.com and returns the answer IPs and resolution time.</div>
-      <pre style="margin-bottom:12px;"><code>{
-  <span class="str">"type"</span>: <span class="str">"dns"</span>,
-  <span class="str">"url"</span>:  <span class="str">"https://cloudflare.com"</span>
-}</code></pre>
-      <button onclick="runDemo('dns','https://cloudflare.com','demo-dns-result')" class="btn-demo">Run demo</button>
-      <div id="demo-dns-result" class="demo-result" style="display:none;"></div>
+    <div class="endpoint-block" id="demo-cloudflare-block">
+      <div class="endpoint-title">Demo 2 — Ping <code>cloudflare.com</code></div>
+      <div class="endpoint-desc" style="margin-bottom:12px;">HTTPS reachability + latency to Cloudflare's homepage.</div>
+      <pre style="margin-bottom:12px;"><code>curl -o /dev/null -s -w <span class="str">"status=%{http_code} latency=%{time_total}s\n"</span> \
+     https://www.cloudflare.com</code></pre>
+      <button onclick="runBrowserPing('https://www.cloudflare.com','demo-cloudflare-result')" class="btn-demo">Run demo</button>
+      <div id="demo-cloudflare-result" class="demo-result" style="display:none;"></div>
     </div>
 
-    <div class="endpoint-block" id="demo-rpc-block">
-      <div class="endpoint-title">RPC block height — OpsalisChain L1</div>
-      <div class="endpoint-desc" style="margin-bottom:12px;">Calls <code>eth_blockNumber</code> on the OpsalisChain L1 RPC and checks that a block is being produced.</div>
-      <pre style="margin-bottom:12px;"><code>{
-  <span class="str">"type"</span>: <span class="str">"rpc"</span>,
-  <span class="str">"url"</span>:  <span class="str">"https://rpc.opsalis.com"</span>
-}</code></pre>
-      <button onclick="runDemo('rpc','https://rpc.opsalis.com','demo-rpc-result')" class="btn-demo">Run demo</button>
-      <div id="demo-rpc-result" class="demo-result" style="display:none;"></div>
+    <div class="endpoint-block" id="demo-github-block">
+      <div class="endpoint-title">Demo 3 — Ping <code>github.com</code></div>
+      <div class="endpoint-desc" style="margin-bottom:12px;">HTTPS reachability + latency to GitHub.</div>
+      <pre style="margin-bottom:12px;"><code>curl -o /dev/null -s -w <span class="str">"status=%{http_code} latency=%{time_total}s\n"</span> \
+     https://github.com</code></pre>
+      <button onclick="runBrowserPing('https://github.com','demo-github-result')" class="btn-demo">Run demo</button>
+      <div id="demo-github-result" class="demo-result" style="display:none;"></div>
+    </div>
+
+    <div class="endpoint-block" id="demo-404-block">
+      <div class="endpoint-title">Demo 4 — Catch a 404 on <code>example.com/does-not-exist</code></div>
+      <div class="endpoint-desc" style="margin-bottom:12px;">Shows that the tool detects failures — expects HTTP 200, receives 404, reports DOWN. example.com is CORS-enabled so the exact status code is visible.</div>
+      <pre style="margin-bottom:12px;"><code>curl -o /dev/null -s -w <span class="str">"status=%{http_code}\n"</span> \
+     https://example.com/does-not-exist
+<span class="comment"># Expected: status=404 → PingDog would report DOWN (expect_status=200)</span></code></pre>
+      <button onclick="run404Demo('https://example.com/does-not-exist','demo-404-result')" class="btn-demo">Run demo</button>
+      <div id="demo-404-result" class="demo-result" style="display:none;"></div>
     </div>
 
   </div>
 
   <script>
-  var DEMO_KEY = 'pdk_demo0000000000000000000000000000000000000000000000000000000000';
-
-  function runDemo(type, url, resultId) {
+  // Browser-side ping: measures real DNS+TCP+TLS+HTTP latency to the target.
+  // Uses no-cors so cross-origin hosts don't block the request. We can't read
+  // the response body, but completion + timing is genuine.
+  function runBrowserPing(url, resultId) {
     var el = document.getElementById(resultId);
     el.style.display = 'block';
     el.style.color = '#92400e';
     el.style.background = '#fffbeb';
-    el.textContent = 'Running check…';
+    el.textContent = 'Running check from your browser…';
 
-    fetch('https://api.pingdog.net/api/check', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-API-Key': DEMO_KEY },
-      body: JSON.stringify({ type: type, url: url })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var up = data.status === 'up' || data.up === true;
-      el.style.color = up ? '#166534' : '#991b1b';
-      el.style.background = up ? '#f0fdf4' : '#fef2f2';
-      var lines = [];
-      if (data.status) lines.push('status: ' + data.status);
-      if (data.latency_ms != null) lines.push('latency: ' + data.latency_ms + ' ms');
-      if (data.resolved_ips) lines.push('IPs: ' + data.resolved_ips.join(', '));
-      if (data.block_number) lines.push('block: ' + data.block_number);
-      if (data.is_stale != null) lines.push('stale: ' + data.is_stale);
-      if (data.error) lines.push('error: ' + data.error);
-      if (data.message) lines.push(data.message);
-      el.textContent = lines.length ? lines.join(' · ') : JSON.stringify(data);
-    })
-    .catch(function(err) {
-      el.style.color = '#991b1b';
-      el.style.background = '#fef2f2';
-      el.textContent = 'Request failed: ' + err.message;
-    });
+    var t0 = performance.now();
+    var bust = (url.indexOf('?') === -1 ? '?' : '&') + 'pdcb=' + Date.now();
+    fetch(url + bust, { mode: 'no-cors', cache: 'no-store', redirect: 'follow' })
+      .then(function() {
+        var ms = Math.round(performance.now() - t0);
+        el.style.color = '#166534';
+        el.style.background = '#f0fdf4';
+        el.textContent = 'status: UP · latency: ' + ms + ' ms · source: your browser · target: ' + url;
+      })
+      .catch(function(err) {
+        var ms = Math.round(performance.now() - t0);
+        el.style.color = '#991b1b';
+        el.style.background = '#fef2f2';
+        el.textContent = 'status: DOWN · after ' + ms + ' ms · error: ' + (err.message || 'network failure');
+      });
+  }
+
+  // example.com serves CORS headers, so we can read the real status code.
+  function run404Demo(url, resultId) {
+    var el = document.getElementById(resultId);
+    el.style.display = 'block';
+    el.style.color = '#92400e';
+    el.style.background = '#fffbeb';
+    el.textContent = 'Running check from your browser…';
+
+    var t0 = performance.now();
+    fetch(url, { cache: 'no-store', redirect: 'manual' })
+      .then(function(r) {
+        var ms = Math.round(performance.now() - t0);
+        var ok = r.status === 200;
+        el.style.color = ok ? '#166534' : '#991b1b';
+        el.style.background = ok ? '#f0fdf4' : '#fef2f2';
+        el.textContent = 'status: ' + (ok ? 'UP' : 'DOWN') + ' · http_code: ' + r.status +
+                         ' · latency: ' + ms + ' ms · expected 200, received ' + r.status +
+                         (ok ? '' : ' → PingDog would alert');
+      })
+      .catch(function(err) {
+        var ms = Math.round(performance.now() - t0);
+        el.style.color = '#991b1b';
+        el.style.background = '#fef2f2';
+        el.textContent = 'status: DOWN · after ' + ms + ' ms · error: ' + (err.message || 'network failure');
+      });
   }
   </script>
 
